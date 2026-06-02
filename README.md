@@ -1,7 +1,7 @@
 # Ontology Generator (Sprint 1)
 
 Auto-generates an **OWL + SKOS ontology** (JSON-LD) from a PostgreSQL datasource —
-the first agent of a semantic layer that augments [Qwery](https://qwery.dev) (a
+the first agent of a semantic layer that augments [Qwery](https://github.com/Guepard-Corp/qwery-core) (a
 natural-language-to-SQL agent). Where Qwery sees only *structural* schema (tables,
 columns, types, FKs), this agent captures the **domain** (classes, properties,
 relationships), the **business glossary** (SKOS synonyms — `revenue` ≡ `turnover` ≡
