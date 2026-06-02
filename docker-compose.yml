@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ontology-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ontology_dev        # the ontology store DB (created automatically)
+    ports:
+      # Host port is overridable (PG_HOST_PORT) for environments where 5432 is taken.
+      - "${PG_HOST_PORT:-5432}:5432"
+    volumes:
+      # Init scripts run alphabetically on first init (empty volume only).
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+      # The e-commerce fixture, referenced by 10-load-ecommerce.sql via \i.
+      - ./src/fixtures:/fixtures:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ontology_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata: {}

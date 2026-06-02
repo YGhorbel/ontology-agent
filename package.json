@@ -1,0 +1,40 @@
+{
+  "name": "ontology-generator",
+  "version": "0.1.0",
+  "description": "Sprint 1 — Ontology Generator agent: auto-generated OWL+SKOS semantic layer for Qwery (LangGraph.js).",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.27.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "generate": "tsx src/cli/generate.ts",
+    "test": "vitest run --dir test/nodes",
+    "test:unit": "vitest run --dir test/nodes",
+    "test:e2e": "vitest run test/agent.test.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down -v",
+    "viz": "tsx scripts/visualize.ts",
+    "viz:setup": "puppeteer browsers install chrome-headless-shell",
+    "ttl": "tsx scripts/to-turtle.ts"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0",
+    "@langchain/openai": "^0.3.0",
+    "dotenv": "^16.4.5",
+    "langsmith": "^0.2.0",
+    "pg": "^8.13.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
