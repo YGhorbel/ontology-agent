@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "generate": "tsx src/cli/generate.ts",
+    "profile": "tsx src/cli/profile.ts",
     "test": "vitest run --dir test/nodes",
     "test:unit": "vitest run --dir test/nodes",
     "test:e2e": "vitest run test/agent.test.ts",
