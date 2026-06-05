@@ -16,6 +16,8 @@
  *             legal relationship target sides, tagged declared-vs-discovered.
  *   --pairs   candidate (source → key) pairs surviving the statistical prefilter
  *             (§5.3) — the inputs to inclusion-dependency / FK discovery.
+ *   --fks     verified inclusion dependencies promoted to foreign keys with
+ *             cardinality, self-reference / N:M classification and an FK score (§5.3.5).
  *
  * At least one mode is required; they may be combined.
  */
@@ -25,9 +27,11 @@ import { introspect } from '../agent/nodes/01-schema-ingest.js';
 import { profileSchema } from '../profiling/single-column.js';
 import { discoverKeys } from '../profiling/key-discovery.js';
 import { generateCandidatePairs } from '../profiling/candidate-pairs.js';
+import { discoverForeignKeys } from '../profiling/foreign-keys.js';
 import type { ColumnProfile } from '../types/column-profile.js';
 import type { KeyCandidate } from '../types/key-candidate.js';
 import type { CandidatePair } from '../types/candidate-pair.js';
+import type { ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
 
 function parseArg(flag: string): string | undefined {
   const argv = process.argv.slice(2);
@@ -80,6 +84,18 @@ const pairRow = (p: CandidatePair) => ({
   self: p.selfReference,
 });
 
+/** Flatten one foreign-key candidate into the printable row shown by console.table. */
+const fkRow = (f: ForeignKeyCandidate) => ({
+  source: f.sourceColumn ? `${f.sourceTable}.${f.sourceColumn}` : f.sourceTable,
+  target: f.targetColumn ? `${f.targetTable}.${f.targetColumn}` : f.targetTable,
+  kind: f.kind,
+  cardinality: f.cardinality,
+  score: f.score.toFixed(2),
+  ratio: f.containmentRatio.toFixed(2),
+  declared: f.declared,
+  junction: f.junctionTable ?? '-',
+});
+
 async function main(): Promise<number> {
   const dsn = parseArg('--dsn') ?? process.env.ONTOLOGY_TARGET_DSN;
   if (!dsn) {
@@ -90,8 +106,9 @@ async function main(): Promise<number> {
   const single = hasFlag('--single');
   const keys = hasFlag('--keys');
   const pairs = hasFlag('--pairs');
-  if (!single && !keys && !pairs) {
-    console.error('Specify a profiling mode: --single, --keys and/or --pairs');
+  const fks = hasFlag('--fks');
+  if (!single && !keys && !pairs && !fks) {
+    console.error('Specify a profiling mode: --single, --keys, --pairs and/or --fks');
     return 2;
   }
 
@@ -109,8 +126,9 @@ async function main(): Promise<number> {
       console.log(`\nProfiled ${schema.tables.length} table(s), ${profiles.length} column(s).`);
     }
 
-    // --keys and --pairs both need the discovered keys (pairs target the keys).
-    const keyCandidates = keys || pairs ? await discoverKeys(client, schema, profiles) : [];
+    // Later modes build on earlier outputs: keys ← (keys|pairs|fks); pairs ← (pairs|fks).
+    const keyCandidates = keys || pairs || fks ? await discoverKeys(client, schema, profiles) : [];
+    const candidatePairs = pairs || fks ? generateCandidatePairs(profiles, keyCandidates) : [];
 
     if (keys) {
       for (const table of schema.tables) {
@@ -122,7 +140,6 @@ async function main(): Promise<number> {
     }
 
     if (pairs) {
-      const candidatePairs = generateCandidatePairs(profiles, keyCandidates);
       console.log(`\nCandidate pairs (source → key target):`);
       console.table(candidatePairs.map(pairRow));
       const targetCount = keyCandidates.filter((k) => k.columns.length === 1 && k.unique).length;
@@ -130,6 +147,19 @@ async function main(): Promise<number> {
       console.log(
         `\nKept ${candidatePairs.length} of ${considered} possible pairs ` +
           `(${profiles.length} source columns × ${targetCount} key targets) after prefilter.`,
+      );
+    }
+
+    if (fks) {
+      const foreignKeys = await discoverForeignKeys(client, schema, profiles, keyCandidates, candidatePairs);
+      console.log(`\nForeign keys (verified inclusion dependencies, promoted):`);
+      console.table(foreignKeys.map(fkRow));
+      const declared = foreignKeys.filter((f) => f.declared).length;
+      const selfRef = foreignKeys.filter((f) => f.kind === 'self-reference').length;
+      const nm = foreignKeys.filter((f) => f.kind === 'many-to-many').length;
+      console.log(
+        `\n${foreignKeys.length} foreign key(s): ${declared} declared, ` +
+          `${foreignKeys.length - declared} undeclared, ${selfRef} self-ref, ${nm} many-to-many.`,
       );
     }
     return 0;
