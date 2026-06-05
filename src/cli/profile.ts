@@ -14,16 +14,20 @@
  *             uniqueness ratio, min, max) grouped by table.
  *   --keys    uniqueness / key discovery (§5.1): the unique column-sets that are
  *             legal relationship target sides, tagged declared-vs-discovered.
+ *   --pairs   candidate (source → key) pairs surviving the statistical prefilter
+ *             (§5.3) — the inputs to inclusion-dependency / FK discovery.
  *
- * At least one mode is required; both may be combined.
+ * At least one mode is required; they may be combined.
  */
 import 'dotenv/config';
 import { makePgConnector } from '../storage/pg.js';
 import { introspect } from '../agent/nodes/01-schema-ingest.js';
 import { profileSchema } from '../profiling/single-column.js';
 import { discoverKeys } from '../profiling/key-discovery.js';
+import { generateCandidatePairs } from '../profiling/candidate-pairs.js';
 import type { ColumnProfile } from '../types/column-profile.js';
 import type { KeyCandidate } from '../types/key-candidate.js';
+import type { CandidatePair } from '../types/candidate-pair.js';
 
 function parseArg(flag: string): string | undefined {
   const argv = process.argv.slice(2);
@@ -66,6 +70,16 @@ const keyRow = (k: KeyCandidate) => ({
   rows: k.numRows,
 });
 
+/** Flatten one candidate pair into the printable row shown by console.table. */
+const pairRow = (p: CandidatePair) => ({
+  source: `${p.sourceTable}.${p.sourceColumn}`,
+  target: `${p.targetTable}.${p.targetColumn}`,
+  family: p.typeFamily,
+  srcDistinct: p.sourceDistinct ?? '-',
+  tgtDistinct: p.targetDistinct ?? '-',
+  self: p.selfReference,
+});
+
 async function main(): Promise<number> {
   const dsn = parseArg('--dsn') ?? process.env.ONTOLOGY_TARGET_DSN;
   if (!dsn) {
@@ -75,8 +89,9 @@ async function main(): Promise<number> {
   }
   const single = hasFlag('--single');
   const keys = hasFlag('--keys');
-  if (!single && !keys) {
-    console.error('Specify a profiling mode: --single and/or --keys');
+  const pairs = hasFlag('--pairs');
+  if (!single && !keys && !pairs) {
+    console.error('Specify a profiling mode: --single, --keys and/or --pairs');
     return 2;
   }
 
@@ -94,14 +109,28 @@ async function main(): Promise<number> {
       console.log(`\nProfiled ${schema.tables.length} table(s), ${profiles.length} column(s).`);
     }
 
+    // --keys and --pairs both need the discovered keys (pairs target the keys).
+    const keyCandidates = keys || pairs ? await discoverKeys(client, schema, profiles) : [];
+
     if (keys) {
-      const candidates = await discoverKeys(client, schema, profiles);
       for (const table of schema.tables) {
-        const rows = candidates.filter((k) => k.table === table.name).map(keyRow);
+        const rows = keyCandidates.filter((k) => k.table === table.name).map(keyRow);
         console.log(`\nKeys: ${table.name}  (${rows.length} key candidate(s))`);
         console.table(rows);
       }
-      console.log(`\nDiscovered ${candidates.length} key candidate(s) across ${schema.tables.length} table(s).`);
+      console.log(`\nDiscovered ${keyCandidates.length} key candidate(s) across ${schema.tables.length} table(s).`);
+    }
+
+    if (pairs) {
+      const candidatePairs = generateCandidatePairs(profiles, keyCandidates);
+      console.log(`\nCandidate pairs (source → key target):`);
+      console.table(candidatePairs.map(pairRow));
+      const targetCount = keyCandidates.filter((k) => k.columns.length === 1 && k.unique).length;
+      const considered = profiles.length * targetCount;
+      console.log(
+        `\nKept ${candidatePairs.length} of ${considered} possible pairs ` +
+          `(${profiles.length} source columns × ${targetCount} key targets) after prefilter.`,
+      );
     }
     return 0;
   } finally {
