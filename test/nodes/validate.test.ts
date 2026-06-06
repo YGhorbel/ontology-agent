@@ -63,6 +63,8 @@ describe('validateOntology', () => {
           'rdfs:range': { '@id': classIri('ghost') },
           'rdfs:label': 'customer',
           'qsl:cardinality': 'one-to-many',
+          'qsl:provenance': 'declared',
+          'qsl:confidence': 1,
         },
       ],
     };

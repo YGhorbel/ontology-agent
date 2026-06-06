@@ -53,4 +53,10 @@ describe('toTurtle', () => {
     expect(ttl).toContain('qsl:scopeClass <https://qwery.dev/semantic-layer/v1/class/orders>');
     expect(ttl).toContain('qsl:provenance "deterministic-fallback"');
   });
+
+  it('annotates object properties with provenance + confidence', () => {
+    expect(ttl).toContain('qsl:provenance "declared"');
+    expect(ttl).toMatch(/qsl:confidence 1\s*\./);
+    expect(ttl).toContain('qsl:confidence a owl:AnnotationProperty .');
+  });
 });

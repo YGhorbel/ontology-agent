@@ -70,6 +70,9 @@ function relationshipNode(r: Relationship): GraphNode {
     'rdfs:range': { '@id': r.target.class },
     'rdfs:label': r.predicate,
     'qsl:cardinality': r.cardinality,
+    'qsl:provenance': r.provenance,
+    'qsl:confidence': r.confidence,
+    ...(r.junctionTable ? { 'qsl:junctionTable': r.junctionTable } : {}),
   };
 }
 

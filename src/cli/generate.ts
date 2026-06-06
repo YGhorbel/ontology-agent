@@ -1,11 +1,17 @@
 /**
  * CLI entry point.
  *
+ *   # target DB by connection string (id derived from the DB name):
+ *   npx tsx src/cli/generate.ts --dsn "postgresql://user:pass@host:5432/ecommerce"
+ *   # or give an explicit id:
+ *   npx tsx src/cli/generate.ts --dsn "postgresql://..." --datasource ecommerce
+ *   # or rely on ONTOLOGY_TARGET_DSN from the environment:
  *   npx tsx src/cli/generate.ts --datasource ecommerce
  *
- * Runs the LangGraph pipeline against ONTOLOGY_TARGET_DSN, writes the JSON-LD to
- * OUT_DIR, persists fragments to the ontology store (DATABASE_URL), records the
- * run, prints a summary, and exits non-zero if validation did not pass.
+ * Runs the LangGraph pipeline against the target DSN (`--dsn` or
+ * ONTOLOGY_TARGET_DSN), writes the JSON-LD to OUT_DIR, persists fragments to the
+ * ontology store (DATABASE_URL), records the run, prints a summary, and exits
+ * non-zero if validation did not pass.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -25,17 +31,34 @@ function parseArg(flag: string): string | undefined {
   return undefined;
 }
 
+/** Derive a stable datasource id from a connection string's database name. */
+function datasourceIdFromDsn(dsn: string): string | undefined {
+  try {
+    const db = new URL(dsn).pathname.replace(/^\//, '').trim();
+    return db.length > 0 ? db : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function main(): Promise<number> {
-  const datasourceId = parseArg('--datasource');
-  if (!datasourceId) {
-    console.error('Usage: tsx src/cli/generate.ts --datasource <id>');
+  const targetDsn = parseArg('--dsn') ?? process.env.ONTOLOGY_TARGET_DSN;
+  if (!targetDsn) {
+    console.error('Usage: tsx src/cli/generate.ts --dsn <connection-string> [--datasource <id>]');
+    console.error('  (--dsn may be omitted if ONTOLOGY_TARGET_DSN is set)');
     return 2;
   }
 
-  const targetDsn = process.env.ONTOLOGY_TARGET_DSN;
+  // Id is the output/persistence label: explicit flag wins, else derive from the DSN db name.
+  const datasourceId = parseArg('--datasource') ?? datasourceIdFromDsn(targetDsn);
+  if (!datasourceId) {
+    console.error('Could not derive a datasource id from --dsn; pass --datasource <id> explicitly.');
+    return 2;
+  }
+
   const storeDsn = process.env.DATABASE_URL;
-  if (!targetDsn || !storeDsn) {
-    console.error('Missing ONTOLOGY_TARGET_DSN and/or DATABASE_URL (see .env.example).');
+  if (!storeDsn) {
+    console.error('Missing DATABASE_URL (the ontology store; see .env.example).');
     return 2;
   }
 

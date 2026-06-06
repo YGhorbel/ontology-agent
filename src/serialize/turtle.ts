@@ -59,13 +59,17 @@ function datatypeTurtle(n: Extract<GraphNode, { '@type': 'owl:DatatypeProperty' 
 }
 
 function objectTurtle(n: Extract<GraphNode, { '@type': 'owl:ObjectProperty' }>): string {
-  return [
+  const parts = [
     `${ref(n['@id'])} a owl:ObjectProperty ;`,
     `    rdfs:domain ${ref(n['rdfs:domain']['@id'])} ;`,
     `    rdfs:range ${ref(n['rdfs:range']['@id'])} ;`,
     `    rdfs:label ${langLit(n['rdfs:label'])} ;`,
-    `    qsl:cardinality ${lit(n['qsl:cardinality'])} .`,
-  ].join('\n');
+    `    qsl:cardinality ${lit(n['qsl:cardinality'])} ;`,
+    `    qsl:provenance ${lit(n['qsl:provenance'])} ;`,
+  ];
+  if (n['qsl:junctionTable']) parts.push(`    qsl:junctionTable ${lit(n['qsl:junctionTable'])} ;`);
+  parts.push(`    qsl:confidence ${n['qsl:confidence']} .`);
+  return parts.join('\n');
 }
 
 function capabilityTurtle(n: Extract<GraphNode, { '@type': 'qsl:Capability' }>): string {
@@ -106,6 +110,8 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string
     'qsl:formulaHint a owl:AnnotationProperty .',
     'qsl:unit a owl:AnnotationProperty .',
     'qsl:provenance a owl:AnnotationProperty .',
+    'qsl:confidence a owl:AnnotationProperty .',
+    'qsl:junctionTable a owl:AnnotationProperty .',
     'qsl:cardinality a owl:AnnotationProperty .',
     'qsl:mapsToTable a owl:AnnotationProperty .',
     'qsl:mapsToColumn a owl:AnnotationProperty .',

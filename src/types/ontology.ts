@@ -45,6 +45,12 @@ export const RelationshipSchema = z.object({
   target: z.object({ class: z.string() }),
   predicate: z.string(),
   cardinality: z.enum(['one-to-one', 'one-to-many', 'many-to-many']),
+  /** Catalog FK constraint vs profiling-discovered (undeclared) relationship. */
+  provenance: z.enum(['declared', 'discovered']).default('declared'),
+  /** FK-likelihood in [0,1]: 1.0 for a declared constraint, the FK score for a discovery. */
+  confidence: z.number().min(0).max(1).default(1),
+  /** Bridge table for an N:M relationship; null for plain/self-reference FKs. */
+  junctionTable: z.string().nullable().default(null),
   derivedFrom: z.object({ table: z.string(), foreignKey: z.string() }),
 });
 export type Relationship = z.infer<typeof RelationshipSchema>;
@@ -104,6 +110,9 @@ const ObjectPropertyNodeSchema = z.object({
   'rdfs:range': z.object({ '@id': z.string() }),
   'rdfs:label': z.string(),
   'qsl:cardinality': z.string(),
+  'qsl:provenance': z.enum(['declared', 'discovered']),
+  'qsl:confidence': z.number().min(0).max(1),
+  'qsl:junctionTable': z.string().optional(),
 });
 
 const CapabilityNodeSchema = z.object({

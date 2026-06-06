@@ -173,6 +173,17 @@ export function makeEcommerceQueryable(): Queryable {
           })),
         };
       }
+      // Profiling (relationship-discover) queries: answer benignly so the
+      // discovery pipeline runs but finds no candidates — keeping the e2e graph
+      // at its declared-FK relationships. readDeclaredKeys → no PK/UNIQUE rows;
+      // buildProfileQuery / buildCompositeKeyQuery (both `count(*) AS n`) → empty
+      // table (numRows 0), which yields no keys, no pairs and no foreign keys.
+      if (text.includes('information_schema.table_constraints') && text.includes('PRIMARY KEY')) {
+        return { rows: [] };
+      }
+      if (/count\(\*\) AS n\b/.test(text)) {
+        return { rows: [{ n: 0 }] };
+      }
       const sample = /^SELECT \* FROM "(\w+)" LIMIT 5/.exec(text.trim());
       if (sample) {
         return { rows: ecommerceSchema.tables.find((t) => t.name === sample[1])?.sampleRows ?? [] };

@@ -14,6 +14,7 @@ import { makePgConnector, type SchemaConnector } from '../storage/pg.js';
 import { makeRealLlm } from '../llm/client.js';
 import type { StructuredLlm } from '../llm/structured-llm.js';
 import { createSchemaIngestNode } from './nodes/01-schema-ingest.js';
+import { createRelationshipDiscoverNode } from './nodes/01b-relationship-discover.js';
 import { createConceptExtractNode } from './nodes/02-concept-extract.js';
 import { createRelationshipLinkNode } from './nodes/03-relationship-link.js';
 import { createCapabilityInferNode } from './nodes/04-capability-infer.js';
@@ -26,6 +27,7 @@ export interface BuildGraphDeps {
 }
 
 const SCHEMA_INGEST = 'schema-ingest';
+const RELATIONSHIP_DISCOVER = 'relationship-discover';
 const CONCEPT_EXTRACT = 'concept-extract';
 const RELATIONSHIP_LINK = 'relationship-link';
 const CAPABILITY_INFER = 'capability-infer';
@@ -43,12 +45,14 @@ export function buildGraph(deps: BuildGraphDeps) {
   const connect = deps.connect ?? makePgConnector;
   const graph = new StateGraph(OntologyStateAnnotation)
     .addNode(SCHEMA_INGEST, createSchemaIngestNode(connect))
+    .addNode(RELATIONSHIP_DISCOVER, createRelationshipDiscoverNode(connect))
     .addNode(CONCEPT_EXTRACT, createConceptExtractNode(deps.llm))
     .addNode(RELATIONSHIP_LINK, createRelationshipLinkNode())
     .addNode(CAPABILITY_INFER, createCapabilityInferNode(deps.llm))
     .addNode(VALIDATE, createValidateNode())
     .addEdge(START, SCHEMA_INGEST)
-    .addEdge(SCHEMA_INGEST, CONCEPT_EXTRACT)
+    .addEdge(SCHEMA_INGEST, RELATIONSHIP_DISCOVER)
+    .addEdge(RELATIONSHIP_DISCOVER, CONCEPT_EXTRACT)
     .addEdge(CONCEPT_EXTRACT, RELATIONSHIP_LINK)
     .addEdge(RELATIONSHIP_LINK, CAPABILITY_INFER)
     .addEdge(CAPABILITY_INFER, VALIDATE)

@@ -8,6 +8,7 @@
  */
 import { Annotation } from '@langchain/langgraph';
 import type { CanonicalSchema } from '../types/canonical-schema.js';
+import type { ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
 import type {
   ConceptCandidate,
   Relationship,
@@ -23,6 +24,11 @@ export const OntologyStateAnnotation = Annotation.Root({
 
   // --- pipeline outputs ---
   canonicalSchema: Annotation<CanonicalSchema | null>({
+    reducer: (_prev, next) => next,
+    default: () => null,
+  }),
+  /** Profiling-discovered FK candidates (undeclared + declared, scored); set by relationship-discover. */
+  foreignKeyCandidates: Annotation<ForeignKeyCandidate[] | null>({
     reducer: (_prev, next) => next,
     default: () => null,
   }),
