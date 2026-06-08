@@ -28,5 +28,11 @@ export const CandidatePairSchema = z.object({
   targetDistinct: z.number().int().nonnegative().nullable(),
   /** sourceTable === targetTable (a self-reference, e.g. manager_id → id). */
   selfReference: z.boolean(),
+  /**
+   * Name overlap between source column and target table, in [0,1] (see
+   * `nameSimilarity`). Computed once at generation; a strong match both relaxes the
+   * statistical prefilter and lets the FK step recover an edge when the IND falls short.
+   */
+  nameSimilarity: z.number().min(0).max(1).default(0),
 });
 export type CandidatePair = z.infer<typeof CandidatePairSchema>;

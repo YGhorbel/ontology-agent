@@ -34,6 +34,12 @@ export const ForeignKeyCandidateSchema = z.object({
   score: z.number().min(0).max(1),
   /** Matches a declared catalog FK constraint (else an undeclared discovery). */
   declared: z.boolean(),
+  /**
+   * Which signal promoted this candidate: `'ind'` = a verified inclusion dependency
+   * (data containment held); `'name'` = a strong column-name+type match whose IND did
+   * not hold (recovered edge, capped confidence). Drives `provenance` downstream.
+   */
+  evidence: z.enum(['ind', 'name']).default('ind'),
   signals: z.object({
     /** Name overlap between the source column and the target table/column. */
     nameSimilarity: z.number().min(0).max(1),

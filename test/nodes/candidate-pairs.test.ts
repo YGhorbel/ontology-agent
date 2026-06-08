@@ -102,6 +102,19 @@ describe('prefilterPair', () => {
     const src = prof('orders', 'customer_id', { distinctCount: 200, numRows: 500, min: '1', max: '200' });
     expect(prefilterPair(src, target)).toEqual({ keep: true });
   });
+
+  it('keeps a strong-name pair despite distinct-exceeds / range-outside', () => {
+    // a trimmed target: source references more (and higher) raceids than survive in `races`
+    const src = prof('driverstandings', 'raceid', { distinctCount: 300, numRows: 900, min: '1', max: '300' });
+    const tgt = prof('races', 'raceid', { distinctCount: 100, numRows: 100, min: '1', max: '100' });
+    expect(prefilterPair(src, tgt, false)).toMatchObject({ keep: false }); // pruned without the name signal
+    expect(prefilterPair(src, tgt, true)).toEqual({ keep: true }); // kept when name-matched
+  });
+
+  it('still drops a type-incompatible pair even when name-matched', () => {
+    const textSrc = prof('orders', 'code', { dataType: 'character varying' });
+    expect(prefilterPair(textSrc, target, true)).toMatchObject({ keep: false, reason: 'type-incompatible' });
+  });
 });
 
 describe('generateCandidatePairs', () => {
@@ -146,5 +159,17 @@ describe('generateCandidatePairs', () => {
     const pairs = generateCandidatePairs(profiles, keys);
     const considered = profiles.length * keys.length; // 6 × 3 = 18
     expect(pairs.length).toBeLessThan(considered);
+  });
+
+  it('recovers a strong-name pair the stats would otherwise prune, stamping nameSimilarity', () => {
+    // driverstandings.raceid references more/higher raceids than survive in a trimmed `races`
+    const trimmed: ColumnProfile[] = [
+      prof('races', 'raceid', { distinctCount: 100, numRows: 100, min: '1', max: '100' }),
+      prof('driverstandings', 'raceid', { distinctCount: 300, numRows: 900, min: '1', max: '300' }),
+    ];
+    const pairs = generateCandidatePairs(trimmed, [key('races', 'raceid')]);
+    const rec = pairs.find((p) => p.sourceTable === 'driverstandings' && p.targetTable === 'races');
+    expect(rec).toBeDefined();
+    expect(rec?.nameSimilarity).toBe(1); // raceid → races
   });
 });

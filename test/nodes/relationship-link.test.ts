@@ -24,6 +24,7 @@ function fkc(partial: Partial<ForeignKeyCandidate>): ForeignKeyCandidate {
     containmentRatio: 1,
     score: 0.9,
     declared: false,
+    evidence: 'ind',
     signals: { nameSimilarity: 1, surrogate: false, rhsReferences: 1 },
     ...partial,
   };
@@ -60,7 +61,7 @@ describe('deriveRelationships', () => {
 });
 
 describe('mergeRelationships', () => {
-  it('keeps declared FKs as provenance:declared / confidence:1', () => {
+  it('keeps declared FKs as provenance:declared / confidence:1 with join columns', () => {
     const rels = mergeRelationships(ecommerceSchema, []);
     expect(rels).toHaveLength(3);
     for (const r of rels) {
@@ -68,6 +69,8 @@ describe('mergeRelationships', () => {
       expect(r.confidence).toBe(1);
       expect(r.junctionTable).toBeNull();
     }
+    const ordersToCustomers = rels.find((r) => r.derivedFrom.foreignKey === 'orders_customer_id_fkey');
+    expect(ordersToCustomers?.joinColumns).toEqual({ from: 'customer_id', to: 'id' });
   });
 
   it('refines a declared FK cardinality from the matching candidate', () => {
@@ -89,6 +92,18 @@ describe('mergeRelationships', () => {
     expect(r?.confidence).toBeCloseTo(0.9);
     expect(r?.predicate).toBe('order');
     expect(r?.derivedFrom.foreignKey).toBe('disc__order_id__orders');
+    expect(r?.joinColumns).toEqual({ from: 'order_id', to: 'id' });
+  });
+
+  it('maps an evidence:name candidate to provenance:inferred-name', () => {
+    const rels = mergeRelationships(ecommerceSchema, [
+      fkc({ sourceTable: 'reviews', sourceColumn: 'order_id', targetTable: 'orders', targetColumn: 'id', score: 0.65, evidence: 'name' }),
+    ]);
+    const r = rels.find((x) => x.source.class === classIri('reviews'));
+    expect(r).toBeDefined();
+    expect(r?.provenance).toBe('inferred-name');
+    expect(r?.confidence).toBeCloseTo(0.65);
+    expect(r?.joinColumns).toEqual({ from: 'order_id', to: 'id' });
   });
 
   it('drops a discovered FK below an explicit score threshold', () => {
@@ -100,11 +115,20 @@ describe('mergeRelationships', () => {
     expect(rels.some((r) => r.source.class === classIri('reviews'))).toBe(false);
   });
 
-  it('keeps every verified FK at the default threshold of 0', () => {
+  it('keeps a low-score discovered FK at the default threshold (0)', () => {
     const rels = mergeRelationships(ecommerceSchema, [
       fkc({ sourceTable: 'reviews', sourceColumn: 'order_id', targetTable: 'orders', score: 0.1 }),
     ]);
     expect(rels.some((r) => r.source.class === classIri('reviews'))).toBe(true);
+  });
+
+  it('drops a low-score FK when an explicit floor is set', () => {
+    const rels = mergeRelationships(
+      ecommerceSchema,
+      [fkc({ sourceTable: 'reviews', sourceColumn: 'order_id', targetTable: 'orders', score: 0.1 })],
+      0.5,
+    );
+    expect(rels.some((r) => r.source.class === classIri('reviews'))).toBe(false);
   });
 
   it('does not double-emit a candidate that duplicates a declared FK', () => {

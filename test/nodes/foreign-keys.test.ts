@@ -32,7 +32,7 @@ function prof(table: string, column: string, o: { numRows?: number; distinctCoun
   };
 }
 
-const cp = (st: string, sc: string, tt: string, tc: string, self = false): CandidatePair => ({
+const cp = (st: string, sc: string, tt: string, tc: string, self = false, nameSim = 0): CandidatePair => ({
   sourceTable: st,
   sourceColumn: sc,
   targetTable: tt,
@@ -41,6 +41,7 @@ const cp = (st: string, sc: string, tt: string, tc: string, self = false): Candi
   sourceDistinct: 5,
   targetDistinct: 10,
   selfReference: self,
+  nameSimilarity: nameSim,
 });
 
 const singleKey = (table: string, column: string): KeyCandidate => ({
@@ -89,8 +90,19 @@ describe('nameSimilarity', () => {
     expect(nameSimilarity('customer_id', 'customers')).toBe(1);
     expect(nameSimilarity('order_id', 'orders')).toBe(1);
   });
+  it('matches the no-underscore Xid convention (raceid -> races)', () => {
+    expect(nameSimilarity('raceid', 'races')).toBe(1);
+    expect(nameSimilarity('driverid', 'drivers')).toBe(1);
+    expect(nameSimilarity('statusid', 'status')).toBe(1);
+  });
   it('is ~0 for a generic surrogate column vs an unrelated table', () => {
     expect(nameSimilarity('id', 'orders')).toBe(0);
+    expect(nameSimilarity('quantity', 'customers')).toBe(0);
+  });
+  it('does not match a short base against a longer compound table name', () => {
+    // constructorid belongs to `constructors`, NOT `constructorresults`
+    expect(nameSimilarity('constructorid', 'constructorresults')).toBeLessThan(0.5);
+    expect(nameSimilarity('constructorid', 'constructors')).toBe(1);
   });
 });
 
@@ -102,9 +114,12 @@ describe('inferCardinality', () => {
 });
 
 describe('scoreForeignKey', () => {
-  it('scores a name-matching FK high and a surrogate coincidence low', () => {
-    expect(scoreForeignKey({ nameSimilarity: 1, surrogate: false, rhsReferences: 1 })).toBeCloseTo(0.9);
-    expect(scoreForeignKey({ nameSimilarity: 0, surrogate: true, rhsReferences: 1 })).toBeCloseTo(0.1);
+  it('scores a name-matching FK high and surrogate coincidences low', () => {
+    expect(scoreForeignKey({ nameSimilarity: 1, surrogate: false, rhsReferences: 1 })).toBeCloseTo(0.85);
+    // a PK-to-PK coincidence (surrogate source, name mismatch)
+    expect(scoreForeignKey({ nameSimilarity: 0, surrogate: true, rhsReferences: 1 })).toBeCloseTo(0);
+    // a spurious reference into a popular surrogate target (name mismatch) stays well below the 0.5 floor
+    expect(scoreForeignKey({ nameSimilarity: 0, surrogate: false, surrogateTarget: true, rhsReferences: 2 })).toBeLessThan(0.5);
   });
 });
 
@@ -122,6 +137,7 @@ describe('detectManyToMany', () => {
       containmentRatio: 1,
       score: 0.8,
       declared: true,
+      evidence: 'ind',
       signals: { nameSimilarity: 0.7, surrogate: false, rhsReferences: 1 },
     });
     const unary = [fk('order_id', 'orders'), fk('product_id', 'products')];
@@ -198,5 +214,75 @@ describe('discoverForeignKeys', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ declared: false, verified: true });
+  });
+
+  const bareSchema = { datasourceId: 't', tables: [], foreignKeys: [] } as unknown as CanonicalSchema;
+  const realPair = [cp('orders', 'customer_id', 'customers', 'id')];
+
+  it('accepts an approximate inclusion dependency (>= 90% contained)', async () => {
+    const near: Queryable = { async query() { return { rows: [{ src_distinct: 100, missing: 5 }] }; } }; // 95%
+    const result = await discoverForeignKeys(near, bareSchema, profiles, keys, realPair);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.containmentRatio).toBeCloseTo(0.95);
+  });
+
+  it('rejects an inclusion dependency below the containment threshold', async () => {
+    const weak: Queryable = { async query() { return { rows: [{ src_distinct: 100, missing: 40 }] }; } }; // 60%
+    const result = await discoverForeignKeys(weak, bareSchema, profiles, keys, realPair);
+    expect(result).toHaveLength(0);
+  });
+
+  // Name-recovery: a strong name+type match whose IND falls short (e.g. a trimmed
+  // dump) is still promoted as a capped-confidence `evidence: 'name'` edge.
+  const dsProfiles = [
+    prof('driverstandings', 'raceid', { distinctCount: 80, numRows: 200 }),
+    prof('races', 'raceid', { distinctCount: 100, numRows: 100 }),
+  ];
+  const dsKeys = [singleKey('races', 'raceid')];
+  // nameSimilarity('raceid','races') === 1 → meets the default 1.0 match bar.
+  const namedPair = [cp('driverstandings', 'raceid', 'races', 'raceid', false, 1)];
+
+  it('recovers a strong-name pair whose IND falls short as evidence:name', async () => {
+    const weak: Queryable = { async query() { return { rows: [{ src_distinct: 100, missing: 40 }] }; } }; // 60% — below 0.7
+    const result = await discoverForeignKeys(weak, bareSchema, dsProfiles, dsKeys, namedPair);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      sourceTable: 'driverstandings',
+      targetTable: 'races',
+      evidence: 'name',
+      verified: false,
+    });
+    expect(result[0]?.score).toBeCloseTo(0.65); // capped name-only confidence
+    expect(result[0]?.containmentRatio).toBeCloseTo(0.6); // the measured (short) ratio
+  });
+
+  it('does NOT name-recover a weak-name pair whose IND falls short', async () => {
+    const weak: Queryable = { async query() { return { rows: [{ src_distinct: 100, missing: 40 }] }; } };
+    // nameSimilarity 0 (default) → below the match bar → dropped, no recovery
+    const result = await discoverForeignKeys(weak, bareSchema, dsProfiles, dsKeys, [cp('driverstandings', 'raceid', 'races', 'raceid')]);
+    expect(result).toHaveLength(0);
+  });
+
+  it('prefers the IND edge (no name-only duplicate) when containment holds', async () => {
+    const strong: Queryable = { async query() { return { rows: [{ src_distinct: 100, missing: 0 }] }; } }; // 100%
+    const result = await discoverForeignKeys(strong, bareSchema, dsProfiles, dsKeys, namedPair);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ evidence: 'ind', verified: true });
+  });
+
+  it('does NOT name-recover against a non-primary-key target column', async () => {
+    // a coincidentally-unique non-PK column (e.g. orders.total_amount): name matches
+    // the *table* but the column is not the identity key → must not be recovered.
+    const nonPkKey: KeyCandidate = { table: 'orders', columns: ['total_amount'], numRows: 100, distinctCount: 100, unique: true, certain: true, minimal: true, declared: null, method: 'single-column' };
+    const profs = [
+      prof('orders', 'total_amount', { distinctCount: 100, numRows: 100 }),
+      prof('refunds', 'order_id', { distinctCount: 80, numRows: 200 }),
+    ];
+    const weak: Queryable = { async query() { return { rows: [{ src_distinct: 100, missing: 40 }] }; } };
+    const result = await discoverForeignKeys(
+      weak, bareSchema, profs, [nonPkKey],
+      [cp('refunds', 'order_id', 'orders', 'total_amount', false, 1)], // name matches table `orders`
+    );
+    expect(result).toHaveLength(0);
   });
 });

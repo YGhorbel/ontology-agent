@@ -21,6 +21,7 @@
 import type { ColumnProfile } from '../types/column-profile.js';
 import type { KeyCandidate } from '../types/key-candidate.js';
 import { CandidatePairSchema, type CandidatePair } from '../types/candidate-pair.js';
+import { nameSimilarity, nameMatchMinFromEnv } from './name-match.js';
 
 export type TypeFamily = 'numeric' | 'text' | 'temporal' | 'uuid' | 'boolean' | 'other';
 
@@ -65,8 +66,18 @@ export interface PrefilterVerdict {
 /**
  * The cheap necessary-condition test for source ⊆ target. Drops a pair only when
  * it is *provably* impossible; if a needed stat is missing it does not prune.
+ *
+ * When `nameMatched` (a strong column-name+type match), the data-stat prunes
+ * (`distinct-exceeds`, `range-outside`) are skipped: those are necessary conditions
+ * for *exact* containment, which a trimmed/partial dump legitimately violates even
+ * for a real FK. The hard structural prunes (same-column, empty source, type
+ * incompatibility) still apply — a name match across incompatible types is not joinable.
  */
-export function prefilterPair(source: ColumnProfile, target: ColumnProfile): PrefilterVerdict {
+export function prefilterPair(
+  source: ColumnProfile,
+  target: ColumnProfile,
+  nameMatched = false,
+): PrefilterVerdict {
   if (source.table === target.table && source.column === target.column) {
     return { keep: false, reason: 'same-column' };
   }
@@ -79,6 +90,9 @@ export function prefilterPair(source: ColumnProfile, target: ColumnProfile): Pre
   if (family === 'other' || family !== typeFamily(target.dataType)) {
     return { keep: false, reason: 'type-incompatible' };
   }
+
+  // A strong name match overrides the data-stat necessary conditions below.
+  if (nameMatched) return { keep: true };
 
   // distinct(A) ≤ distinct(B) — only prunes when both are known.
   if (
@@ -126,12 +140,14 @@ export function generateCandidatePairs(
     if (tp) targets.push(tp);
   }
 
+  const nameMatchMin = nameMatchMinFromEnv();
   const pairs: CandidatePair[] = [];
   for (const source of profiles) {
     for (const target of targets) {
       const selfTable = source.table === target.table;
       if (selfTable && !includeSelf) continue;
-      if (!prefilterPair(source, target).keep) continue;
+      const sim = nameSimilarity(source.column, target.table);
+      if (!prefilterPair(source, target, sim >= nameMatchMin).keep) continue;
 
       pairs.push(
         CandidatePairSchema.parse({
@@ -143,6 +159,7 @@ export function generateCandidatePairs(
           sourceDistinct: source.distinctCount,
           targetDistinct: target.distinctCount,
           selfReference: selfTable,
+          nameSimilarity: sim,
         }),
       );
     }

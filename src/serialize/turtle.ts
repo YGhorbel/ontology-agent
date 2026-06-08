@@ -68,6 +68,8 @@ function objectTurtle(n: Extract<GraphNode, { '@type': 'owl:ObjectProperty' }>):
     `    qsl:provenance ${lit(n['qsl:provenance'])} ;`,
   ];
   if (n['qsl:junctionTable']) parts.push(`    qsl:junctionTable ${lit(n['qsl:junctionTable'])} ;`);
+  if (n['qsl:joinFromColumn']) parts.push(`    qsl:joinFromColumn ${lit(n['qsl:joinFromColumn'])} ;`);
+  if (n['qsl:joinToColumn']) parts.push(`    qsl:joinToColumn ${lit(n['qsl:joinToColumn'])} ;`);
   parts.push(`    qsl:confidence ${n['qsl:confidence']} .`);
   return parts.join('\n');
 }
@@ -112,6 +114,8 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string
     'qsl:provenance a owl:AnnotationProperty .',
     'qsl:confidence a owl:AnnotationProperty .',
     'qsl:junctionTable a owl:AnnotationProperty .',
+    'qsl:joinFromColumn a owl:AnnotationProperty .',
+    'qsl:joinToColumn a owl:AnnotationProperty .',
     'qsl:cardinality a owl:AnnotationProperty .',
     'qsl:mapsToTable a owl:AnnotationProperty .',
     'qsl:mapsToColumn a owl:AnnotationProperty .',

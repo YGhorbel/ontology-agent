@@ -20,7 +20,10 @@ import type { ColumnProfile } from '../types/column-profile.js';
 import type { KeyCandidate } from '../types/key-candidate.js';
 import type { CandidatePair } from '../types/candidate-pair.js';
 import { ForeignKeyCandidateSchema, type ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
-import { predicateFromColumn } from '../agent/nodes/03-relationship-link.js';
+import { nameSimilarity, nameMatchMinFromEnv } from './name-match.js';
+
+// Re-exported so existing importers (and tests) keep their `from './foreign-keys.js'` path.
+export { nameSimilarity } from './name-match.js';
 
 const num = (v: unknown): number | null => {
   if (v === null || v === undefined) return null;
@@ -30,6 +33,22 @@ const num = (v: unknown): number | null => {
 const quoteIdent = (id: string): string => `"${id.replace(/"/g, '""')}"`;
 const clamp = (n: number): number => Math.max(0, Math.min(1, n));
 const key2 = (a: string, b: string): string => `${a} ${b}`;
+
+/** Minimum value-containment for an approximate inclusion dependency. Default 0.7; env-overridable. */
+const inclusionThresholdFromEnv = (): number => {
+  const raw = Number(process.env.ONTOLOGY_IND_MIN_CONTAINMENT);
+  return Number.isFinite(raw) && raw > 0 && raw <= 1 ? raw : 0.7;
+};
+
+/**
+ * Confidence for a name-recovered edge — a strong name+type match whose IND did NOT
+ * hold (e.g. a trimmed dump). Default 0.65: above the resolver's 0.5 trust floor (so
+ * it is auto-joined for normal queries) yet clearly below a data-verified FK.
+ */
+const nameOnlyConfidenceFromEnv = (): number => {
+  const raw = Number(process.env.ONTOLOGY_NAME_ONLY_CONFIDENCE);
+  return Number.isFinite(raw) && raw > 0 && raw <= 1 ? raw : 0.65;
+};
 
 /** One read-only containment scan for a unary candidate pair. Exported for testing. */
 export function buildContainmentQuery(pair: CandidatePair): string {
@@ -59,17 +78,6 @@ export async function verifyInclusion(q: Queryable, pair: CandidatePair): Promis
   return { srcDistinct, missing, containmentRatio, holds: srcDistinct > 0 && missing === 0 };
 }
 
-/** Name overlap between a source column and its target table, in [0,1]. */
-export function nameSimilarity(sourceColumn: string, targetTable: string): number {
-  const base = predicateFromColumn(sourceColumn).toLowerCase(); // customer_id -> customer
-  if (!base) return 0;
-  const tbl = targetTable.toLowerCase();
-  const singular = tbl.replace(/s$/, '');
-  if (base === tbl || base === singular || `${base}s` === tbl) return 1;
-  if (tbl.includes(base) || base.includes(singular)) return 0.7;
-  return 0;
-}
-
 /** Target is always a key; the source's uniqueness decides 1:1 vs 1:N. */
 export function inferCardinality(sourceProfile: ColumnProfile): 'one-to-one' | 'one-to-many' {
   return sourceProfile.uniquenessRatio === 1 ? 'one-to-one' : 'one-to-many';
@@ -77,15 +85,26 @@ export function inferCardinality(sourceProfile: ColumnProfile): 'one-to-one' | '
 
 export interface FkSignals {
   nameSimilarity: number;
+  /** The source column is its own table's key (a surrogate-coincidence risk). */
   surrogate: boolean;
+  /** The target column is a bare surrogate key (a 1..N PK that swallows spurious INDs). */
+  surrogateTarget?: boolean;
   rhsReferences: number;
 }
 
-/** FK-likelihood score in [0,1]: name boosts, popular RHS boosts, surrogate penalises. */
+/**
+ * FK-likelihood score in [0,1]. Name similarity dominates with a low baseline, so a
+ * name-mismatched inclusion dependency starts low and the surrogate-key coincidences
+ * (an IND that "holds" only because the target is a sequential 1..N key) fall out —
+ * "a foreign key must satisfy an IND, but not all INDs are foreign keys" (§5.3.5).
+ */
 export function scoreForeignKey(s: FkSignals): number {
-  let score = 0.5 + 0.4 * s.nameSimilarity;
-  if (s.rhsReferences >= 2) score += 0.1;
-  if (s.surrogate && s.nameSimilarity < 0.5) score -= 0.4; // surrogate-key coincidence
+  let score = 0.15 + 0.7 * s.nameSimilarity;
+  if (s.rhsReferences >= 2) score += 0.1; // a popular RHS key is more FK-like
+  if (s.nameSimilarity < 0.5) {
+    if (s.surrogate) score -= 0.3; // source is its own surrogate key
+    if (s.surrogateTarget) score -= 0.2; // spurious reference into a surrogate PK
+  }
   return clamp(score);
 }
 
@@ -150,8 +169,16 @@ export async function discoverForeignKeys(
 
   // Source columns that are their own table's single-column key → surrogate risk.
   const singleKeyCols = new Set<string>();
+  // Declared single-column primary keys — the only legitimate target for a
+  // name-recovered edge. `nameSimilarity` matches the target *table*, not the
+  // column, so without this gate a name-matched source would recover against any
+  // coincidentally-unique column (e.g. orders.total_amount) instead of orders.id.
+  const primaryKeyCols = new Set<string>();
   for (const k of keys) {
-    if (k.columns.length === 1 && k.unique) singleKeyCols.add(key2(k.table, k.columns[0] as string));
+    if (k.columns.length !== 1) continue;
+    const col = key2(k.table, k.columns[0] as string);
+    if (k.unique) singleKeyCols.add(col);
+    if (k.declared === 'primary') primaryKeyCols.add(col);
   }
 
   // Declared FK constraints, for the discovered-vs-declared cross-check.
@@ -160,11 +187,29 @@ export async function discoverForeignKeys(
     declaredSet.add([fk.sourceTable, fk.sourceColumn, fk.targetTable, fk.targetColumn].join(' '));
   }
 
-  // Step 4 — verify; keep the pairs whose IND holds.
+  // Step 4 — verify; keep the pairs whose IND holds (approximately).
+  // Exact 100% containment misses real but undeclared FKs in trimmed/dirty data
+  // (a few orphan rows). Accept ratio ≥ threshold; the name-dominant FK score still
+  // rejects name-less near-coincidences, so recall rises without losing precision.
+  // When the IND falls short but the column name+type strongly matches the target
+  // (e.g. `driverstandings.raceid`→`races` in a trimmed dump), keep it as a
+  // name-recovered edge: naming is FK evidence independent of the data. Promoted at
+  // a capped confidence with `evidence: 'name'` so it stays distinguishable.
+  const minContainment = inclusionThresholdFromEnv();
+  const nameMatchMin = nameMatchMinFromEnv();
   const verified: Array<{ pair: CandidatePair; ratio: number }> = [];
+  const nameRecovered: Array<{ pair: CandidatePair; ratio: number }> = [];
   for (const pair of pairs) {
     const r = await verifyInclusion(q, pair);
-    if (r.holds) verified.push({ pair, ratio: r.containmentRatio });
+    if (r.srcDistinct <= 0) continue;
+    if (r.containmentRatio >= minContainment) {
+      verified.push({ pair, ratio: r.containmentRatio });
+    } else if (
+      pair.nameSimilarity >= nameMatchMin &&
+      primaryKeyCols.has(key2(pair.targetTable, pair.targetColumn))
+    ) {
+      nameRecovered.push({ pair, ratio: r.containmentRatio });
+    }
   }
 
   // RHS popularity: how many verified INDs point at each target key.
@@ -182,6 +227,7 @@ export async function discoverForeignKeys(
 
     const sim = nameSimilarity(pair.sourceColumn, pair.targetTable);
     const surrogate = singleKeyCols.has(key2(pair.sourceTable, pair.sourceColumn));
+    const surrogateTarget = singleKeyCols.has(key2(pair.targetTable, pair.targetColumn));
     const rhsReferences = rhsTally.get(key2(pair.targetTable, pair.targetColumn)) ?? 0;
 
     unaryFks.push(
@@ -195,11 +241,40 @@ export async function discoverForeignKeys(
         cardinality: inferCardinality(sourceProfile),
         verified: true,
         containmentRatio: ratio,
-        score: scoreForeignKey({ nameSimilarity: sim, surrogate, rhsReferences }),
+        score: scoreForeignKey({ nameSimilarity: sim, surrogate, surrogateTarget, rhsReferences }),
         declared: declaredSet.has(
           [pair.sourceTable, pair.sourceColumn, pair.targetTable, pair.targetColumn].join(' '),
         ),
+        evidence: 'ind',
         signals: { nameSimilarity: sim, surrogate, rhsReferences },
+      }),
+    );
+  }
+
+  // Step 5b — promote name-recovered pairs (strong name, IND short) at capped confidence.
+  const nameOnlyConfidence = nameOnlyConfidenceFromEnv();
+  for (const { pair, ratio } of nameRecovered) {
+    const sourceProfile = profileByCol.get(key2(pair.sourceTable, pair.sourceColumn));
+    if (!sourceProfile) continue;
+
+    const surrogate = singleKeyCols.has(key2(pair.sourceTable, pair.sourceColumn));
+    unaryFks.push(
+      ForeignKeyCandidateSchema.parse({
+        kind: pair.selfReference ? 'self-reference' : 'foreign-key',
+        sourceTable: pair.sourceTable,
+        sourceColumn: pair.sourceColumn,
+        targetTable: pair.targetTable,
+        targetColumn: pair.targetColumn,
+        junctionTable: null,
+        cardinality: inferCardinality(sourceProfile),
+        verified: false, // the IND did not hold; the name carries the edge
+        containmentRatio: ratio,
+        score: nameOnlyConfidence,
+        declared: declaredSet.has(
+          [pair.sourceTable, pair.sourceColumn, pair.targetTable, pair.targetColumn].join(' '),
+        ),
+        evidence: 'name',
+        signals: { nameSimilarity: pair.nameSimilarity, surrogate, rhsReferences: 0 },
       }),
     );
   }

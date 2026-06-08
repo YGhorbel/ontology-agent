@@ -59,4 +59,10 @@ describe('toTurtle', () => {
     expect(ttl).toMatch(/qsl:confidence 1\s*\./);
     expect(ttl).toContain('qsl:confidence a owl:AnnotationProperty .');
   });
+
+  it('emits the literal join keys on object properties', () => {
+    expect(ttl).toContain('qsl:joinFromColumn "customer_id"');
+    expect(ttl).toContain('qsl:joinToColumn "id"');
+    expect(ttl).toContain('qsl:joinFromColumn a owl:AnnotationProperty .');
+  });
 });

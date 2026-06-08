@@ -20,9 +20,10 @@ import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
 /**
  * FK-likelihood floor for promoting a *discovered* FK. Default 0 = keep every
- * verified inclusion dependency (maximum recall); each relationship still carries
- * its `confidence`, so consumers can filter downstream without regenerating.
- * Raise via ONTOLOGY_FK_MIN_SCORE (e.g. 0.5 drops surrogate-key coincidences).
+ * verified inclusion dependency: the ontology stores the complete relationship
+ * knowledge with per-edge `confidence`, and the query-time join resolver tiers by
+ * trust (it only falls back to low-confidence edges when nothing better connects).
+ * Raise ONTOLOGY_FK_MIN_SCORE to prune at generation time instead.
  */
 const minScoreFromEnv = (): number => {
   const raw = Number(process.env.ONTOLOGY_FK_MIN_SCORE);
@@ -79,6 +80,7 @@ export function mergeRelationships(
       provenance: 'declared',
       confidence: 1,
       junctionTable: null,
+      joinColumns: { from: fk.sourceColumn, to: fk.targetColumn },
       derivedFrom: { table: fk.sourceTable, foreignKey: fk.name },
     });
   }
@@ -96,9 +98,10 @@ export function mergeRelationships(
       target: { class: classIri(c.targetTable) },
       predicate: predicateFromColumn(c.sourceColumn),
       cardinality: c.cardinality,
-      provenance: 'discovered',
+      provenance: c.evidence === 'name' ? 'inferred-name' : 'discovered',
       confidence: c.score,
       junctionTable: null,
+      joinColumns: { from: c.sourceColumn, to: c.targetColumn },
       derivedFrom: { table: c.sourceTable, foreignKey: `disc__${c.sourceColumn}__${c.targetTable}` },
     });
   }
@@ -115,6 +118,7 @@ export function mergeRelationships(
       provenance: c.declared ? 'declared' : 'discovered',
       confidence: c.score,
       junctionTable: c.junctionTable,
+      joinColumns: null, // resolved via the two unary FK edges through the junction class
       derivedFrom: { table: c.junctionTable, foreignKey: `nm__${c.targetTable}` },
     });
   }

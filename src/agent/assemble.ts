@@ -73,6 +73,9 @@ function relationshipNode(r: Relationship): GraphNode {
     'qsl:provenance': r.provenance,
     'qsl:confidence': r.confidence,
     ...(r.junctionTable ? { 'qsl:junctionTable': r.junctionTable } : {}),
+    ...(r.joinColumns
+      ? { 'qsl:joinFromColumn': r.joinColumns.from, 'qsl:joinToColumn': r.joinColumns.to }
+      : {}),
   };
 }
 
