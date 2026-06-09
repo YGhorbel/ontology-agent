@@ -18,6 +18,7 @@ import { profileSchema } from '../../profiling/single-column.js';
 import { discoverKeys } from '../../profiling/key-discovery.js';
 import { generateCandidatePairs } from '../../profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../profiling/foreign-keys.js';
+import { buildColumnFacts } from '../../profiling/column-facts.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
 /** Factory: binds the connector so tests can inject a fake Queryable. */
@@ -34,7 +35,10 @@ export function createRelationshipDiscoverNode(connect: SchemaConnector) {
       const keys = await discoverKeys(client, schema, profiles);
       const pairs = generateCandidatePairs(profiles, keys);
       const foreignKeyCandidates = await discoverForeignKeys(client, schema, profiles, keys, pairs);
-      return { foreignKeyCandidates };
+      // Per-column query metadata (type, keyness, numeric-as-text, value dictionaries),
+      // reusing the same open connection for the bounded value-sampling pass.
+      const columnFacts = await buildColumnFacts(client, profiles, keys);
+      return { foreignKeyCandidates, columnFacts };
     } finally {
       await client.close();
     }

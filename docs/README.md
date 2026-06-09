@@ -8,6 +8,10 @@ recover **relationships that were never declared** as foreign-key constraints.
 > ontology is built from scratch, how profiling and column **naming** combine as peer evidence
 > sources, and **how strong** the result is (what it catches, what it misses, and why). The
 > per-step docs below drill into the individual profiling stages.
+>
+> **Query side:** [joinpath.md](joinpath.md) — how the join resolver (`pnpm run joinpath`) is
+> built: the graph model, the algorithms (Dijkstra / Steiner / Yen's K-best), and the
+> evolution with the pros, cons, and bugs faced at each step plus the limitations ahead.
 
 ## Why profiling
 

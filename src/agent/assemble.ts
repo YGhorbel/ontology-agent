@@ -15,6 +15,7 @@ import {
   type OntologyJsonLd,
   type Relationship,
 } from '../types/ontology.js';
+import type { ColumnFact } from '../types/column-fact.js';
 
 const JSONLD_CONTEXT = {
   owl: 'http://www.w3.org/2002/07/owl#',
@@ -47,7 +48,7 @@ function classNode(c: ConceptCandidate): GraphNode {
   };
 }
 
-function datatypePropertyNode(c: ConceptCandidate): GraphNode {
+function datatypePropertyNode(c: ConceptCandidate, fact: ColumnFact | undefined): GraphNode {
   const column = c.source.column ?? '';
   return {
     '@id': datatypePropertyIri(c.source.table, column),
@@ -59,6 +60,17 @@ function datatypePropertyNode(c: ConceptCandidate): GraphNode {
     ...(c.altLabel.length > 0 ? { 'skos:altLabel': c.altLabel } : {}),
     'qsl:mapsToTable': c.source.table,
     'qsl:mapsToColumn': column,
+    // Query metadata (Sprint 1): type always; flags/values only when meaningful.
+    ...(fact
+      ? {
+          'qsl:dataType': fact.dataType,
+          ...(fact.isNumericText ? { 'qsl:isNumericText': true } : {}),
+          ...(fact.isPrimaryKey ? { 'qsl:isPrimaryKey': true } : {}),
+          ...(fact.isUnique ? { 'qsl:isUnique': true } : {}),
+          ...(fact.distinctCount !== null ? { 'qsl:distinctCount': fact.distinctCount } : {}),
+          ...(fact.sampleValues.length > 0 ? { 'qsl:sampleValues': fact.sampleValues } : {}),
+        }
+      : {}),
   };
 }
 
@@ -103,11 +115,15 @@ export function assembleOntology(
   concepts: ConceptCandidate[],
   relationships: Relationship[],
   capabilities: Capability[],
+  columnFacts: ColumnFact[] = [],
 ): OntologyJsonLd {
+  const factByCol = new Map<string, ColumnFact>();
+  for (const f of columnFacts) factByCol.set(`${f.table} ${f.column}`, f);
+
   const graph: GraphNode[] = [];
   for (const c of concepts) {
     if (c.ontologyKind === 'Class') graph.push(classNode(c));
-    else graph.push(datatypePropertyNode(c));
+    else graph.push(datatypePropertyNode(c, factByCol.get(`${c.source.table} ${c.source.column ?? ''}`)));
   }
   for (const r of relationships) graph.push(relationshipNode(r));
 

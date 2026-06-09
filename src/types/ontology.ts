@@ -107,6 +107,13 @@ const DatatypePropertyNodeSchema = z.object({
   'skos:altLabel': z.array(z.string()).optional(),
   'qsl:mapsToTable': z.string(),
   'qsl:mapsToColumn': z.string(),
+  // Query metadata (Sprint 1) — optional/additive so older ontologies still parse.
+  'qsl:dataType': z.string().optional(),
+  'qsl:isNumericText': z.boolean().optional(),
+  'qsl:isPrimaryKey': z.boolean().optional(),
+  'qsl:isUnique': z.boolean().optional(),
+  'qsl:distinctCount': z.number().int().nonnegative().optional(),
+  'qsl:sampleValues': z.array(z.string()).optional(),
 });
 
 const ObjectPropertyNodeSchema = z.object({

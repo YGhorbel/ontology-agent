@@ -31,6 +31,8 @@ const lit = (s: string): string =>
 /** Natural-language literal with an @en tag. */
 const langLit = (s: string): string => `${lit(s)}@en`;
 const langList = (xs: string[]): string => xs.map(langLit).join(', ');
+/** Plain (non-language) string-literal list, e.g. machine value samples. */
+const plainList = (xs: string[]): string => xs.map(lit).join(', ');
 
 function classTurtle(n: Extract<GraphNode, { '@type': 'owl:Class' }>): string {
   const parts = [
@@ -45,17 +47,24 @@ function classTurtle(n: Extract<GraphNode, { '@type': 'owl:Class' }>): string {
 }
 
 function datatypeTurtle(n: Extract<GraphNode, { '@type': 'owl:DatatypeProperty' }>): string {
-  const parts = [
-    `${ref(n['@id'])} a owl:DatatypeProperty ;`,
-    `    rdfs:domain ${ref(n['rdfs:domain']['@id'])} ;`,
-    `    rdfs:label ${langLit(n['rdfs:label'])} ;`,
-    `    rdfs:comment ${langLit(n['rdfs:comment'])} ;`,
-    `    skos:prefLabel ${langLit(n['skos:prefLabel'])} ;`,
+  // Collect predicate-object pairs, then terminate the last one with '.'.
+  const preds: string[] = [
+    `rdfs:domain ${ref(n['rdfs:domain']['@id'])}`,
+    `rdfs:label ${langLit(n['rdfs:label'])}`,
+    `rdfs:comment ${langLit(n['rdfs:comment'])}`,
+    `skos:prefLabel ${langLit(n['skos:prefLabel'])}`,
   ];
-  if (n['skos:altLabel'] && n['skos:altLabel'].length > 0) parts.push(`    skos:altLabel ${langList(n['skos:altLabel'])} ;`);
-  parts.push(`    qsl:mapsToTable ${lit(n['qsl:mapsToTable'])} ;`);
-  parts.push(`    qsl:mapsToColumn ${lit(n['qsl:mapsToColumn'])} .`);
-  return parts.join('\n');
+  if (n['skos:altLabel'] && n['skos:altLabel'].length > 0) preds.push(`skos:altLabel ${langList(n['skos:altLabel'])}`);
+  preds.push(`qsl:mapsToTable ${lit(n['qsl:mapsToTable'])}`);
+  preds.push(`qsl:mapsToColumn ${lit(n['qsl:mapsToColumn'])}`);
+  // Query metadata (Sprint 1) — booleans/number are typed literals; samples are plain strings.
+  if (n['qsl:dataType'] !== undefined) preds.push(`qsl:dataType ${lit(n['qsl:dataType'])}`);
+  if (n['qsl:isNumericText']) preds.push('qsl:isNumericText true');
+  if (n['qsl:isPrimaryKey']) preds.push('qsl:isPrimaryKey true');
+  if (n['qsl:isUnique']) preds.push('qsl:isUnique true');
+  if (n['qsl:distinctCount'] !== undefined) preds.push(`qsl:distinctCount ${n['qsl:distinctCount']}`);
+  if (n['qsl:sampleValues'] && n['qsl:sampleValues'].length > 0) preds.push(`qsl:sampleValues ${plainList(n['qsl:sampleValues'])}`);
+  return `${ref(n['@id'])} a owl:DatatypeProperty ;\n    ${preds.join(' ;\n    ')} .`;
 }
 
 function objectTurtle(n: Extract<GraphNode, { '@type': 'owl:ObjectProperty' }>): string {
@@ -119,6 +128,12 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string
     'qsl:cardinality a owl:AnnotationProperty .',
     'qsl:mapsToTable a owl:AnnotationProperty .',
     'qsl:mapsToColumn a owl:AnnotationProperty .',
+    'qsl:dataType a owl:AnnotationProperty .',
+    'qsl:isNumericText a owl:AnnotationProperty .',
+    'qsl:isPrimaryKey a owl:AnnotationProperty .',
+    'qsl:isUnique a owl:AnnotationProperty .',
+    'qsl:distinctCount a owl:AnnotationProperty .',
+    'qsl:sampleValues a owl:AnnotationProperty .',
   ].join('\n');
 
   const order: GraphNode['@type'][] = ['owl:Class', 'owl:DatatypeProperty', 'owl:ObjectProperty', 'qsl:Capability'];

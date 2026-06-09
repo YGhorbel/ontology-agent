@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { OntologyJsonLdSchema } from '../types/ontology.js';
 import { buildOntologyIndex } from '../query/ontology-index.js';
-import { buildJoinGraph, resolveJoinPath } from '../query/join-graph.js';
+import { buildJoinGraph, resolveJoinPath, resolveAllPaths } from '../query/join-graph.js';
 
 function parseArg(flag: string): string | undefined {
   const argv = process.argv.slice(2);
@@ -32,6 +32,8 @@ function main(): number {
   const tables = tablesArg.split(',').map((t) => t.trim()).filter(Boolean);
   const minConfArg = parseArg('--min-confidence');
   const minConfidence = minConfArg !== undefined ? Number(minConfArg) : undefined;
+  const pathsArg = parseArg('--paths');
+  const k = pathsArg !== undefined ? Number(pathsArg) : undefined;
 
   const raw = JSON.parse(readFileSync(ontologyPath, 'utf8')) as unknown;
   const ontology = OntologyJsonLdSchema.parse(raw);
@@ -39,17 +41,37 @@ function main(): number {
   const graph = buildJoinGraph(index.joinEdges);
 
   const factTables = index.capabilities.filter((c) => c.kind === 'factTable').map((c) => c.scopeTable);
-  const plan = resolveJoinPath(graph, tables, { factTables, ...(minConfidence !== undefined ? { minConfidence } : {}) });
+  const conf = minConfidence !== undefined ? { minConfidence } : {};
+
+  // --paths K: emit the K-best scored candidates as JSON (the LLM-facing payload).
+  if (k !== undefined) {
+    if (tables.length !== 2) {
+      console.error('--paths requires exactly 2 tables (K-best enumeration is pairwise).');
+      return 2;
+    }
+    const candidates = resolveAllPaths(graph, tables, { factTables, k, ...conf });
+    console.log(JSON.stringify({ requested: tables, candidates }, null, 2));
+    return candidates.length > 0 ? 0 : 1;
+  }
+
+  const onSql = (c: { on: Array<{ left: string; right: string }> }): string =>
+    c.on.map((p) => `${p.left} = ${p.right}`).join(' AND ');
+
+  const plan = resolveJoinPath(graph, tables, { factTables, ...conf });
 
   console.log(`\nRequested: ${tables.join(', ')}`);
   console.log(`Join graph: ${index.classes.size} tables, ${index.joinEdges.length} edges\n`);
   if (plan.lowConfidence) {
     console.log('[⚠] best-effort path: relies on a low-confidence discovered edge (see conf below)\n');
   }
+  if (plan.fanOut) {
+    console.log('[fan-out] a hop multiplies rows — aggregates over this path may need DISTINCT / a subquery\n');
+  }
   console.log(`FROM ${plan.anchorTable}`);
   for (const c of plan.clauses) {
     const tag = `${c.provenance} ${c.confidence.toFixed(2)}`;
-    console.log(`JOIN ${c.joinTable} ON ${c.on.left} = ${c.on.right}   -- ${c.cardinality}, ${tag}`);
+    const fan = c.multiplies ? ' [fan-out]' : '';
+    console.log(`JOIN ${c.joinTable} ON ${onSql(c)}   -- ${c.cardinality}, ${tag}${fan}`);
   }
   if (plan.unreachable.length > 0) {
     console.log(`\n[!] unreachable (no join path to anchor): ${plan.unreachable.join(', ')}`);

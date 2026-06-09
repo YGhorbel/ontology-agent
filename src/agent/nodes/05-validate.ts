@@ -108,7 +108,7 @@ export function createValidateNode() {
     if (!canonicalSchema || !conceptCandidates || !relationships || !capabilities) {
       throw new Error('validate: required prior state is missing.');
     }
-    const ontology = assembleOntology(conceptCandidates, relationships, capabilities);
+    const ontology = assembleOntology(conceptCandidates, relationships, capabilities, state.columnFacts ?? []);
     const validationErrors = validateOntology(ontology, canonicalSchema);
     return { ontology, validationErrors };
   };

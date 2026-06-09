@@ -52,6 +52,7 @@ function discoverConnector(): SchemaConnector {
         const holds = src?.[2] === 'posts' && src?.[1] === 'user_id' && tgt?.[1] === 'users';
         return { rows: [{ src_distinct: 2, missing: holds ? 0 : 1 }] };
       }
+      if (t.includes('::text AS v')) return { rows: [] }; // value-dictionary sample (column-facts)
       throw new Error(`discoverConnector: unexpected query: ${t}`);
     },
   };

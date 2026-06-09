@@ -3,7 +3,21 @@ import { toTurtle } from '../../src/serialize/turtle.js';
 import { assembleOntology } from '../../src/agent/assemble.js';
 import { deriveRelationships } from '../../src/agent/nodes/03-relationship-link.js';
 import { classIri, type Capability, type ConceptCandidate } from '../../src/types/ontology.js';
+import type { ColumnFact } from '../../src/types/column-fact.js';
 import { ecommerceSchema } from '../fixtures.js';
+
+const fact = (table: string, column: string, o: Partial<ColumnFact> = {}): ColumnFact => ({
+  table,
+  column,
+  dataType: 'text',
+  isNumericText: false,
+  isUnique: false,
+  isPrimaryKey: false,
+  distinctCount: null,
+  nullable: false,
+  sampleValues: [],
+  ...o,
+});
 
 function sampleOntology() {
   const concepts: ConceptCandidate[] = [
@@ -16,7 +30,11 @@ function sampleOntology() {
     { kind: 'metric', scope: { class: classIri('orders') }, prefLabel: 'revenue', altLabel: ['turnover', 'top-line'], formulaHint: 'SUM(orders.total_amount) - COALESCE(SUM(refunds.amount), 0)', unit: 'EUR', provenance: 'deterministic-fallback' },
   ];
   const rels = deriveRelationships(ecommerceSchema).filter((r) => r.derivedFrom.foreignKey === 'orders_customer_id_fkey');
-  return assembleOntology(concepts, rels, caps);
+  const facts: ColumnFact[] = [
+    fact('orders', 'total_amount', { dataType: 'numeric', distinctCount: 12, sampleValues: ['9.99', '19.99'] }),
+    fact('customers', 'id', { dataType: 'integer', isPrimaryKey: true, isUnique: true }),
+  ];
+  return assembleOntology(concepts, rels, caps, facts);
 }
 
 describe('toTurtle', () => {
@@ -64,5 +82,14 @@ describe('toTurtle', () => {
     expect(ttl).toContain('qsl:joinFromColumn "customer_id"');
     expect(ttl).toContain('qsl:joinToColumn "id"');
     expect(ttl).toContain('qsl:joinFromColumn a owl:AnnotationProperty .');
+  });
+
+  it('emits column query metadata (dataType, key flags, value samples)', () => {
+    expect(ttl).toContain('qsl:dataType "numeric"');
+    expect(ttl).toContain('qsl:dataType "integer"');
+    expect(ttl).toContain('qsl:isPrimaryKey true');
+    expect(ttl).toContain('qsl:isUnique true');
+    expect(ttl).toContain('qsl:sampleValues "9.99", "19.99"');
+    expect(ttl).toContain('qsl:dataType a owl:AnnotationProperty .');
   });
 });

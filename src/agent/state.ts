@@ -9,6 +9,7 @@
 import { Annotation } from '@langchain/langgraph';
 import type { CanonicalSchema } from '../types/canonical-schema.js';
 import type { ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
+import type { ColumnFact } from '../types/column-fact.js';
 import type {
   ConceptCandidate,
   Relationship,
@@ -29,6 +30,11 @@ export const OntologyStateAnnotation = Annotation.Root({
   }),
   /** Profiling-discovered FK candidates (undeclared + declared, scored); set by relationship-discover. */
   foreignKeyCandidates: Annotation<ForeignKeyCandidate[] | null>({
+    reducer: (_prev, next) => next,
+    default: () => null,
+  }),
+  /** Per-column query metadata (type, keyness, numeric-as-text, value dictionaries); set by relationship-discover. */
+  columnFacts: Annotation<ColumnFact[] | null>({
     reducer: (_prev, next) => next,
     default: () => null,
   }),

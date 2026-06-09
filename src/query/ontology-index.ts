@@ -23,6 +23,12 @@ export interface ColumnInfo {
   column: string;
   prefLabel: string;
   comment: string;
+  // Query metadata (Sprint 1) — present when the ontology carries it.
+  dataType?: string;
+  isNumericText?: boolean;
+  isPrimaryKey?: boolean;
+  isUnique?: boolean;
+  sampleValues?: string[];
 }
 export interface CapabilityInfo {
   kind: string;
@@ -67,7 +73,16 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
       case 'owl:DatatypeProperty': {
         const table = n['qsl:mapsToTable'];
         const list = columnsByTable.get(table) ?? [];
-        list.push({ column: n['qsl:mapsToColumn'], prefLabel: n['skos:prefLabel'], comment: n['rdfs:comment'] });
+        list.push({
+          column: n['qsl:mapsToColumn'],
+          prefLabel: n['skos:prefLabel'],
+          comment: n['rdfs:comment'],
+          ...(n['qsl:dataType'] !== undefined ? { dataType: n['qsl:dataType'] } : {}),
+          ...(n['qsl:isNumericText'] !== undefined ? { isNumericText: n['qsl:isNumericText'] } : {}),
+          ...(n['qsl:isPrimaryKey'] !== undefined ? { isPrimaryKey: n['qsl:isPrimaryKey'] } : {}),
+          ...(n['qsl:isUnique'] !== undefined ? { isUnique: n['qsl:isUnique'] } : {}),
+          ...(n['qsl:sampleValues'] !== undefined ? { sampleValues: n['qsl:sampleValues'] } : {}),
+        });
         columnsByTable.set(table, list);
         break;
       }

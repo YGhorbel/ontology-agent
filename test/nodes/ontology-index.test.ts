@@ -27,7 +27,11 @@ function sampleOntology() {
   const caps: Capability[] = [
     { kind: 'factTable', scope: { class: classIri('results') }, altLabel: [], provenance: 'llm' },
   ];
-  return assembleOntology(concepts, relationships, caps);
+  const columnFacts = [
+    { table: 'results', column: 'points', dataType: 'integer', isNumericText: false, isUnique: false, isPrimaryKey: false, distinctCount: 26, nullable: false, sampleValues: [] },
+    { table: 'constructors', column: 'name', dataType: 'text', isNumericText: false, isUnique: true, isPrimaryKey: false, distinctCount: 3, nullable: false, sampleValues: ['Alpha', 'Beta', 'Gamma'] },
+  ];
+  return assembleOntology(concepts, relationships, caps, columnFacts);
 }
 
 describe('tableOfClassIri', () => {
@@ -63,5 +67,12 @@ describe('buildOntologyIndex', () => {
   it('indexes capabilities with their scope table', () => {
     const fact = index.capabilities.find((c) => c.kind === 'factTable');
     expect(fact?.scopeTable).toBe('results');
+  });
+
+  it('round-trips column query metadata (dataType, uniqueness, sample values)', () => {
+    const points = index.columnsByTable.get('results')?.find((c) => c.column === 'points');
+    const name = index.columnsByTable.get('constructors')?.find((c) => c.column === 'name');
+    expect(points).toMatchObject({ dataType: 'integer' });
+    expect(name).toMatchObject({ dataType: 'text', isUnique: true, sampleValues: ['Alpha', 'Beta', 'Gamma'] });
   });
 });
