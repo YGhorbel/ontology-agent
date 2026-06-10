@@ -26,7 +26,7 @@ import {
   isCue,
   isProjectionCue,
   isSuperlative,
-  SUPERLATIVE_DIR,
+  directionFor,
   parseNumberWord,
   isNumericLiteral,
   tokenize,
@@ -128,6 +128,14 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
   // Projection cues (list/show/give/name/…) double as stopwords, so check the
   // pre-stopword question rather than `raw`.
   const wantsProjection = normalize(question).split(' ').some((t) => isProjectionCue(t));
+  // Ranking context: a superlative with no grouping cue ⇒ rank rows by a metric
+  // (ORDER BY + LIMIT), not aggregate it (GROUP BY + measure).
+  const supIdx = raw.findIndex((t) => isSuperlative(singularize(t)));
+  const supTok = supIdx >= 0 ? singularize(raw[supIdx] as string) : null;
+  const rankingContext = !grouping && supIdx >= 0;
+  // Foreign-key columns (the `from` side of each join edge) must never surface as a
+  // projection or group-by column — they are join plumbing, not user-facing data.
+  const fkCols = new Set(index.joinEdges.map((e) => `${e.fromTable}.${e.fromColumn}`));
 
   const covered = new Array<boolean>(nameToks.length).fill(false);
   const refAt = new Array<Accepted | null>(nameToks.length).fill(null);
@@ -231,6 +239,9 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
   const measures: QueryIntent['measures'] = [];
   const dimKeys = new Set<string>();
   const groupDims: QueryIntent['groupDims'] = [];
+  // In ranking context a metric is the ORDER BY target, not an aggregate; collect
+  // candidates here (with a label for metric-aware direction) instead of `measures`.
+  const rankCandidates: Array<{ table: string; column: string; label: string }> = [];
   const filterByCol = new Map<string, { table: string; column: string; values: string[]; matchedSample: boolean }>();
   const filterRefs = new Set<string>();
 
@@ -250,13 +261,18 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
       addFilter(cand.ref.table, col, cand.matchedValue ?? '', true);
     } else if (cand.role === 'measure' && col) {
       const k = `${cand.ref.table}.${col}`;
-      if (!measureKeys.has(k)) {
+      if (rankingContext) {
+        // Rank by this metric (ORDER BY), don't aggregate it (no GROUP BY / measure).
+        if (!rankCandidates.some((r) => r.table === cand.ref.table && r.column === col)) {
+          rankCandidates.push({ table: cand.ref.table, column: col, label: [...(target?.surfaces ?? []), col].join(' ') });
+        }
+      } else if (!measureKeys.has(k)) {
         measureKeys.add(k);
         measures.push({ table: cand.ref.table, column: col, ...(target?.capability ? { capability: target.capability } : {}) });
       }
     } else if (cand.kind === 'column' && col && (grouping || cand.role === 'dimension')) {
       const k = `${cand.ref.table}.${col}`;
-      if (!dimKeys.has(k)) {
+      if (!dimKeys.has(k) && !fkCols.has(k)) {
         dimKeys.add(k);
         groupDims.push({ table: cand.ref.table, column: col });
       }
@@ -279,8 +295,11 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
     value: f.values.join(', '),
     matchedSample: f.matchedSample,
   }));
-  // A column used as a filter is not also a group dimension (e.g. an aliased id bound to a literal).
-  const groupDimsOut = groupDims.filter((g) => !filterRefs.has(`${g.table}.${g.column}`));
+  // GROUP BY is only meaningful alongside an aggregate; and a column used as a filter
+  // is not also a group dimension (e.g. an aliased id bound to a literal).
+  const groupDimsOut = measures.length === 0
+    ? []
+    : groupDims.filter((g) => !filterRefs.has(`${g.table}.${g.column}`));
 
   // Order + limit: evidence hints first, else a light superlative/number cue grammar.
   const orderBy: QueryIntent['orderBy'] = [];
@@ -300,14 +319,21 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
   if (hints?.limit != null) limit = hints.limit;
   if (orderBy.length === 0 || limit == null) {
     // Cue grammar: a superlative implies a direction; a nearby number implies a limit.
-    const supIdx = raw.findIndex((t) => isSuperlative(singularize(t)));
-    if (supIdx >= 0) {
-      const dir = SUPERLATIVE_DIR.get(singularize(raw[supIdx] as string)) ?? 'desc';
-      if (orderBy.length === 0 && measures[0]) orderBy.push({ table: measures[0].table, column: measures[0].column, dir });
+    if (supTok) {
+      // Rank by the ranking-context metric if there is one, else by an aggregate;
+      // direction is metric-aware for polarity-ambiguous words (fastest/slowest).
+      const rank = rankCandidates[0]
+        ?? (measures[0] ? { table: measures[0].table, column: measures[0].column, label: measures[0].column } : null);
+      if (orderBy.length === 0 && rank) {
+        orderBy.push({ table: rank.table, column: rank.column, dir: directionFor(supTok, rank.label) });
+        tables.add(rank.table);
+      }
       if (limit == null) {
         const numTok = raw.map((t) => parseNumberWord(t)).find((n): n is number => n !== null);
         if (numTok != null && !numericFilters.some((f) => f.value === String(numTok))) limit = numTok;
       }
+      // A singular superlative subject ("the fastest driver") returns exactly one row.
+      if (limit == null) limit = 1;
     }
   }
 
@@ -325,7 +351,7 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
       if (cand.role === 'measure') continue;
       const k = `${cand.ref.table}.${col}`;
       if (filterRefs.has(k) || measureKeys.has(k) || dimKeys.has(k) || orderByKeys.has(k) || projKeys.has(k)) continue;
-      if (isPk(cand.ref.table, col)) continue;
+      if (isPk(cand.ref.table, col) || fkCols.has(k)) continue;
       projKeys.add(k);
       projection.push({ table: cand.ref.table, column: col });
     }

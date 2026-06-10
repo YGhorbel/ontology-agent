@@ -90,6 +90,7 @@ function buildF1(): OntologyIndex {
     prop('qualifying', 'q1', 'Q1 time', ['first qualifying time', 'Q1']),
     prop('drivers', 'driverref', 'Driver reference', ['ref', 'driver slug']),
     prop('results', 'points', 'Points', ['race points']),
+    prop('results', 'fastestlapspeed', 'Fastest lap speed', ['top speed']),
     prop('results', 'position', 'Finishing position', ['Finish position']),
     prop('results', 'constructorid', 'Constructor', []),
     prop('results', 'driverid', 'Driver', []),
@@ -106,6 +107,7 @@ function buildF1(): OntologyIndex {
   ];
   const facts: ColumnFact[] = [
     fact('results', 'points', { dataType: 'integer' }),
+    fact('results', 'fastestlapspeed', { dataType: 'numeric' }),
     fact('results', 'position', { dataType: 'bigint' }),
     fact('driverstandings', 'position', { dataType: 'bigint' }),
     fact('constructors', 'constructorid', { dataType: 'bigint', isPrimaryKey: true, isUnique: true }),
@@ -119,6 +121,7 @@ function buildF1(): OntologyIndex {
   ];
   const caps: Capability[] = [
     metric('results', 'points', 'points', ['race points', 'scoring points']),
+    metric('results', 'fastestlapspeed', 'fastest lap speed', ['top speed']),
     metric('races', 'raceid', 'number of races', ['race count']),
     factTable('results', 'Race results (fact table)'),
     dimension('drivers', 'driverid', 'Driver', ['racer']),
@@ -266,5 +269,16 @@ export const goldenCases: GoldenCase[] = [
     index: f1Index,
     measures: [],
     unresolved: ['eliminated', 'period'],
+  },
+  // f1 — Sprint 3b: ranking context ("the X with the fastest Y") ⇒ ORDER BY + LIMIT 1,
+  // NOT an aggregate. fastestLapSpeed reads as speed-like, so "fastest" sorts DESC.
+  {
+    question: 'what is the family name of the driver with the fastest lap speed',
+    index: f1Index,
+    tables: ['results', 'drivers'],
+    projection: ['drivers.surname'],
+    measures: [],
+    orderBy: ['results.fastestlapspeed desc'],
+    limit: 1,
   },
 ];

@@ -9,6 +9,7 @@ import {
   similarity,
   trigramSim,
   isCue,
+  directionFor,
 } from '../../src/query/text-normalize.js';
 
 describe('normalize', () => {
@@ -63,5 +64,23 @@ describe('trigramSim', () => {
   it('is 1 for identical strings and higher for closer phrases', () => {
     expect(trigramSim('revenue', 'revenue')).toBe(1);
     expect(trigramSim('revenue', 'revenu')).toBeGreaterThan(trigramSim('revenue', 'currency'));
+  });
+});
+
+describe('directionFor', () => {
+  it('uses the map verbatim for unambiguous superlatives', () => {
+    expect(directionFor('highest', 'points')).toBe('desc');
+    expect(directionFor('lowest', 'points')).toBe('asc');
+  });
+  it('flips polarity-ambiguous words by the metric: speed-like → fastest is desc', () => {
+    expect(directionFor('fastest', 'fastest lap speed')).toBe('desc');
+    expect(directionFor('slowest', 'top speed')).toBe('asc');
+  });
+  it('time-like metric: fastest is asc (smallest time)', () => {
+    expect(directionFor('fastest', 'lap time')).toBe('asc');
+    expect(directionFor('slowest', 'duration')).toBe('desc');
+  });
+  it('falls back to the time-like default when the metric is unclassified', () => {
+    expect(directionFor('fastest', 'driver')).toBe('asc');
   });
 });

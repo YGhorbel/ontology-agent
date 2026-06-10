@@ -49,6 +49,8 @@ function clausesOf(evidence: string): string[] {
 
 const ALIAS_RE = /^(.*?)\s+(?:refers?\s+to|means|denotes|is|are)\s+(.+?)\.?$/i;
 const AGG_RE = /\b(max|min)\s*\(\s*([a-z0-9_]+)\s*\)/i;
+/** BIRD also writes the aggregate before the column: "(MAX) fastestLapSpeed". */
+const AGG_PAREN_RE = /\(\s*(max|min)\s*\)\s*([a-z0-9_]+)/i;
 const VALUE_RE = /([a-z0-9_]+)\s*=\s*'([^']+)'/i;
 
 /** Parse a BIRD-style evidence string into deterministic LinkHints. */
@@ -59,8 +61,8 @@ export function parseEvidence(evidence: string, index: OntologyIndex): ParsedEvi
   for (const clause of clausesOf(evidence)) {
     let matched = false;
 
-    // (1) Aggregation + limit: "... N ... MAX(col) ..." → orderBy + limit.
-    const agg = AGG_RE.exec(clause);
+    // (1) Aggregation + limit: "... N ... MAX(col) ..." (or "(MAX) col") → orderBy + limit.
+    const agg = AGG_RE.exec(clause) ?? AGG_PAREN_RE.exec(clause);
     if (agg) {
       const dir = agg[1]!.toLowerCase() === 'max' ? 'desc' : 'asc';
       hints.orderBy.push({ column: normalize(agg[2]!).replace(/\s+/g, ''), dir });

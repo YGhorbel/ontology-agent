@@ -119,3 +119,33 @@ describe('linkQuestion — skeleton (Sprint 3a)', () => {
     expect(intent.unresolved).not.toContain('period');
   });
 });
+
+describe('linkQuestion — assembler robustness (Sprint 3b)', () => {
+  const fastest = 'what is the family name of the driver with the fastest lap speed';
+
+  it('ranks by a metric instead of aggregating it (no measure, no group-by)', () => {
+    const intent = linkQuestion(fastest, f1Index);
+    expect(intent.measures).toHaveLength(0); // ranking context: not an aggregate
+    expect(intent.groupDims).toHaveLength(0); // no GROUP BY without a measure
+  });
+
+  it('orders by the ranked metric descending and limits to one row', () => {
+    const intent = linkQuestion(fastest, f1Index);
+    expect(intent.orderBy.map((o) => `${o.table}.${o.column} ${o.dir}`)).toContain('results.fastestlapspeed desc');
+    expect(intent.limit).toBe(1); // singular superlative subject ⇒ LIMIT 1
+  });
+
+  it('never projects a foreign-key column', () => {
+    const fkCols = new Set(f1Index.joinEdges.map((e) => `${e.fromTable}.${e.fromColumn}`));
+    const intent = linkQuestion(fastest, f1Index);
+    for (const p of intent.projection) expect(fkCols.has(`${p.table}.${p.column}`)).toBe(false);
+  });
+
+  it('still aggregates (measure + group-by) when a grouping cue is present', () => {
+    // Regression: ranking-context gating and "no group-by without a measure" must not
+    // break the aggregate path — a measure keeps its column group dimension.
+    const intent = linkQuestion('order count by currency', ecommerceIndex);
+    expect(intent.measures.map((m) => `${m.table}.${m.column}`)).toContain('orders.id');
+    expect(intent.groupDims.map((g) => `${g.table}.${g.column}`)).toContain('orders.currency');
+  });
+});

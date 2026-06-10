@@ -23,6 +23,12 @@ describe('parseEvidence', () => {
     expect(hints.limit).toBe(3);
   });
 
+  it('parses the aggregate-before-column shape "(MAX) col"', () => {
+    const { hints } = parseEvidence('1 driver with the (MAX) fastestlapspeed', f1Index);
+    expect(hints.orderBy).toEqual([{ column: 'fastestlapspeed', dir: 'desc' }]);
+    expect(hints.limit).toBe(1);
+  });
+
   it('extracts a value illustration "<col> = \'value\'"', () => {
     const { hints } = parseEvidence("active customers means status = 'active'", ecommerceIndex);
     expect(hints.values.some((v) => v.value === 'active' && v.ref.column === 'status')).toBe(true);
