@@ -6,7 +6,7 @@ import { classIri, type Capability, type ConceptCandidate, type Relationship } f
 function sampleOntology() {
   const concepts: ConceptCandidate[] = [
     { source: { table: 'results' }, ontologyKind: 'Class', prefLabel: 'Race Result', altLabel: ['result'], rdfsLabel: 'Race Result', rdfsComment: 'A finishing result.' },
-    { source: { table: 'results', column: 'points' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Points', altLabel: [], rdfsLabel: 'Points', rdfsComment: 'Points scored.' },
+    { source: { table: 'results', column: 'points' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Points', altLabel: ['score', 'tally'], rdfsLabel: 'Points', rdfsComment: 'Points scored.' },
     { source: { table: 'constructors' }, ontologyKind: 'Class', prefLabel: 'Constructor', altLabel: ['team'], rdfsLabel: 'Constructor', rdfsComment: 'A racing team.' },
     { source: { table: 'constructors', column: 'name' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Name', altLabel: [], rdfsLabel: 'Name', rdfsComment: 'Team name.' },
   ];
@@ -25,7 +25,7 @@ function sampleOntology() {
     },
   ];
   const caps: Capability[] = [
-    { kind: 'factTable', scope: { class: classIri('results') }, altLabel: [], provenance: 'llm' },
+    { kind: 'factTable', scope: { class: classIri('results') }, altLabel: ['fact'], provenance: 'llm' },
   ];
   const columnFacts = [
     { table: 'results', column: 'points', dataType: 'integer', isNumericText: false, isUnique: false, isPrimaryKey: false, distinctCount: 26, nullable: false, sampleValues: [] },
@@ -74,5 +74,12 @@ describe('buildOntologyIndex', () => {
     const name = index.columnsByTable.get('constructors')?.find((c) => c.column === 'name');
     expect(points).toMatchObject({ dataType: 'integer' });
     expect(name).toMatchObject({ dataType: 'text', isUnique: true, sampleValues: ['Alpha', 'Beta', 'Gamma'] });
+  });
+
+  it('round-trips altLabel synonyms on columns and capabilities (schema-linking surfaces)', () => {
+    const points = index.columnsByTable.get('results')?.find((c) => c.column === 'points');
+    expect(points?.altLabel).toEqual(['score', 'tally']);
+    const fact = index.capabilities.find((c) => c.kind === 'factTable');
+    expect(fact?.altLabel).toEqual(['fact']);
   });
 });

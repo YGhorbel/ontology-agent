@@ -8,12 +8,17 @@
     "node": ">=20"
   },
   "packageManager": "pnpm@10.27.0",
+  "bin": {
+    "qwery": "src/cli/qwery.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "generate": "tsx src/cli/generate.ts",
     "profile": "tsx src/cli/profile.ts",
     "joinpath": "tsx src/cli/joinpath.ts",
+    "link": "tsx src/cli/link.ts",
+    "qwery": "tsx src/cli/qwery.ts",
     "test": "vitest run --dir test/nodes",
     "test:unit": "vitest run --dir test/nodes",
     "test:e2e": "vitest run test/agent.test.ts",

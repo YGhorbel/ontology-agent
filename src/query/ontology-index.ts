@@ -22,6 +22,8 @@ export interface ClassInfo {
 export interface ColumnInfo {
   column: string;
   prefLabel: string;
+  /** Synonyms for schema linking (skos:altLabel). Empty when none declared. */
+  altLabel: string[];
   comment: string;
   // Query metadata (Sprint 1) — present when the ontology carries it.
   dataType?: string;
@@ -37,6 +39,8 @@ export interface CapabilityInfo {
   formulaHint?: string;
   unit?: string;
   prefLabel?: string;
+  /** Synonyms for schema linking (skos:altLabel). Empty when none declared. */
+  altLabel: string[];
 }
 export interface OntologyIndex {
   classes: Map<string, ClassInfo>;
@@ -76,6 +80,7 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
         list.push({
           column: n['qsl:mapsToColumn'],
           prefLabel: n['skos:prefLabel'],
+          altLabel: n['skos:altLabel'] ?? [],
           comment: n['rdfs:comment'],
           ...(n['qsl:dataType'] !== undefined ? { dataType: n['qsl:dataType'] } : {}),
           ...(n['qsl:isNumericText'] !== undefined ? { isNumericText: n['qsl:isNumericText'] } : {}),
@@ -111,6 +116,7 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
           formulaHint: n['qsl:formulaHint'],
           unit: n['qsl:unit'],
           prefLabel: n['skos:prefLabel'],
+          altLabel: n['skos:altLabel'] ?? [],
         });
         break;
       }
