@@ -42,7 +42,7 @@ full table. Profiling/recovery: `ONTOLOGY_IND_MIN_CONTAINMENT` (0.7), `ONTOLOGY_
 `ONTOLOGY_VALIDATE_DRY_RUN` (true), `ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS` (5000). Cumulative measures
 (Fix 3): `ONTOLOGY_MONOTONIC_MIN_RATIO` (0.99). Export tiering / header (Fix 5/6):
 `ONTOLOGY_EXPORT_MIN_CONF` (0.5), `ONTOLOGY_BUILD_NUMBER` (epoch seconds). Cardinality (Fix 4):
-`ONTOLOGY_CARDINALITY_MIN_CONF` (0.5).
+`ONTOLOGY_CARDINALITY_MIN_CONF` (0.5). Composite joins (Fix 7): `ONTOLOGY_COMPOSITE_MAX_ROWS` (5000000).
 
 `pnpm run generate` writes a tiered dataset (`.jsonld` + `.trig`): an **asserted** default graph
 (`owl:ObjectProperty`) plus a **candidate** graph (`qsl:CandidateRelationship`) for low-confidence

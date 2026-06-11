@@ -50,3 +50,24 @@ export const ForeignKeyCandidateSchema = z.object({
   }),
 });
 export type ForeignKeyCandidate = z.infer<typeof ForeignKeyCandidateSchema>;
+
+/**
+ * A bounded *composite* (2-column) foreign key recovered from the data (Fix 7): the
+ * source columns include into a near-unique column pair on the target. Direction is
+ * source → target where the target pair is the (approximate) key. Powers a direct
+ * multi-key join (e.g. laptimes(raceid,driverid) → results(raceid,driverid)) instead
+ * of a fan-out-prone 2-hop unary detour.
+ */
+export const CompositeForeignKeyCandidateSchema = z.object({
+  sourceTable: z.string(),
+  sourceColumns: z.array(z.string()).length(2),
+  targetTable: z.string(),
+  targetColumns: z.array(z.string()).length(2),
+  /** Fraction of distinct source pairs found in the target pair (approximate IND). */
+  containmentRatio: z.number().min(0).max(1),
+  /** Distinct/total ratio of the target pair — how key-like the target side is. */
+  targetUniqueness: z.number().min(0).max(1),
+  /** FK-likelihood in [0,1] used as the edge confidence. */
+  score: z.number().min(0).max(1),
+});
+export type CompositeForeignKeyCandidate = z.infer<typeof CompositeForeignKeyCandidateSchema>;

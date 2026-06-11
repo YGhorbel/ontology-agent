@@ -233,7 +233,8 @@ Declared catalog FKs always win (`provenance: declared`, `confidence: 1`).
 - **Name recovery needs a *declared* primary key** on the target. A dump with **no PK
   constraints at all** won't name-recover (the gate has nothing to match); declared PKs are
   near-universal, but this is the one schema shape where recall regresses.
-- **Composite (multi-column) foreign keys** beyond the N:M junction case are out of scope.
+- **Composite (multi-column) foreign keys** are recovered only in the *bounded* 2-column case
+  (Fix 7 — sibling fact tables sharing ≥2 FK parents); general n-ary FK discovery is out of scope.
 - **Confidence numbers are heuristic**, not probabilities — they rank edges, they don't
   calibrate to a true likelihood.
 
@@ -262,6 +263,7 @@ where a catalog-only approach would leave holes.
 | `ONTOLOGY_EXPORT_MIN_CONF` | `0.5` | Min confidence for a *discovered* edge to publish in the asserted graph; below it the edge is a `qsl:CandidateRelationship` (`declared`/`inferred-name` always asserted) |
 | `ONTOLOGY_BUILD_NUMBER` | *(epoch s)* | Monotonic build number stamped into the header's `owl:versionInfo`; defaults to the run's epoch seconds |
 | `ONTOLOGY_CARDINALITY_MIN_CONF` | `0.5` | Min edge confidence for `qsl:cardinality` to be emitted — below it the (untrustworthy) cardinality is omitted |
+| `ONTOLOGY_COMPOSITE_MAX_ROWS` | `5000000` | Skip composite-FK discovery for a table whose row count exceeds this (cost bound) |
 
 ---
 
@@ -314,6 +316,19 @@ knob values used. Uniqueness is now provenance-tagged: `qsl:isUnique` for constr
   `llm-validated` — a metric whose formula passed every deterministic check (parse, bind, type,
   dry-run, temporality) is upgraded to `llm-validated` with `qsl:validationEvidence`. With the
   dry-run disabled it stays `llm` (can't be certified).
+
+### Bounded composite join paths (Fix 7)
+
+Some joins need two keys at once — `laptimes(raceid, driverid) → results(raceid, driverid)`.
+The ontology has each *unary* FK but no direct edge between the two fact tables, so a query like
+"lap time per constructor" detours through a shared dimension and silently fans out. Composite-FK
+discovery ([`composite-fk.ts`](../src/profiling/composite-fk.ts), in ①b) recovers the direct edge,
+**strictly bounded**: only table pairs already sharing ≥2 unary FK parents, only 2-column
+combinations, the target side must be an approximate key (the more-unique side, ≥0.99 distinct),
+tables above `ONTOLOGY_COMPOSITE_MAX_ROWS` are skipped, and the 2-column inclusion dependency is
+verified with one containment scan (`ONTOLOGY_IND_MIN_CONTAINMENT`). The edge carries
+`qsl:compositeJoin true` + `qsl:joinFromColumns`/`qsl:joinToColumns` arrays, and the join-graph
+resolver prefers it over a 2-hop unary detour when both keys are needed.
 
 ---
 

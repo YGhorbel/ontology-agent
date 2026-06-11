@@ -62,6 +62,10 @@ export const RelationshipSchema = z.object({
   junctionTable: z.string().nullable().default(null),
   /** The literal join keys (source/target columns) so SQL JOINs need no guessing; null for N:M. */
   joinColumns: z.object({ from: z.string(), to: z.string() }).nullable().default(null),
+  /** Bounded composite (2-column) join keys (Fix 7); absent for unary/N:M relationships. */
+  compositeJoin: z
+    .object({ fromColumns: z.array(z.string()), toColumns: z.array(z.string()) })
+    .optional(),
   derivedFrom: z.object({ table: z.string(), foreignKey: z.string() }),
 });
 export type Relationship = z.infer<typeof RelationshipSchema>;
@@ -152,6 +156,10 @@ const ObjectPropertyNodeSchema = z.object({
   'qsl:junctionTable': z.string().optional(),
   'qsl:joinFromColumn': z.string().optional(),
   'qsl:joinToColumn': z.string().optional(),
+  /** Composite (multi-column) join keys (Fix 7) — present together with the marker. */
+  'qsl:compositeJoin': z.boolean().optional(),
+  'qsl:joinFromColumns': z.array(z.string()).optional(),
+  'qsl:joinToColumns': z.array(z.string()).optional(),
 });
 
 const CapabilityNodeSchema = z.object({

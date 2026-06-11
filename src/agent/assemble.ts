@@ -111,6 +111,13 @@ function relationshipNode(r: Relationship): GraphNode {
     ...(r.joinColumns
       ? { 'qsl:joinFromColumn': r.joinColumns.from, 'qsl:joinToColumn': r.joinColumns.to }
       : {}),
+    ...(r.compositeJoin
+      ? {
+          'qsl:compositeJoin': true,
+          'qsl:joinFromColumns': r.compositeJoin.fromColumns,
+          'qsl:joinToColumns': r.compositeJoin.toColumns,
+        }
+      : {}),
   };
 }
 

@@ -20,6 +20,7 @@ import { generateCandidatePairs } from '../../profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../profiling/foreign-keys.js';
 import { buildColumnFacts } from '../../profiling/column-facts.js';
 import { detectCumulativeMeasures, temporalityEvidenceString } from '../../profiling/monotonicity.js';
+import { discoverCompositeForeignKeys } from '../../profiling/composite-fk.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
 /** Factory: binds the connector so tests can inject a fake Queryable. */
@@ -50,7 +51,10 @@ export function createRelationshipDiscoverNode(connect: SchemaConnector) {
           fact.temporalityEvidence = temporalityEvidenceString(evidence);
         }
       }
-      return { foreignKeyCandidates, columnFacts };
+      // Bounded composite (2-column) FK discovery (Fix 7): direct multi-key joins between
+      // fact tables that share ≥2 unary FK parents (e.g. laptimes→results on raceid+driverid).
+      const compositeForeignKeys = await discoverCompositeForeignKeys(client, schema, foreignKeyCandidates, profiles);
+      return { foreignKeyCandidates, columnFacts, compositeForeignKeys };
     } finally {
       await client.close();
     }

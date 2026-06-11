@@ -112,19 +112,32 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
         break;
       }
       case 'owl:ObjectProperty': {
+        const fromTable = tableOfClassIri(n['rdfs:domain']['@id']);
+        const toTable = tableOfClassIri(n['rdfs:range']['@id']);
+        const cardinality = n['qsl:cardinality'] ?? 'many-to-one';
+        // Composite (multi-column) join (Fix 7): a direct multi-key edge with extraColumns.
+        const fromCols = n['qsl:joinFromColumns'];
+        const toCols = n['qsl:joinToColumns'];
+        if (fromCols && toCols && fromCols.length >= 2 && fromCols.length === toCols.length) {
+          joinEdges.push(
+            JoinEdgeSchema.parse({
+              fromTable,
+              fromColumn: fromCols[0],
+              toTable,
+              toColumn: toCols[0],
+              extraColumns: fromCols.slice(1).map((f, i) => ({ from: f, to: toCols[i + 1] })),
+              cardinality,
+              confidence: n['qsl:confidence'],
+              provenance: n['qsl:provenance'],
+            }),
+          );
+          break;
+        }
         const fromColumn = n['qsl:joinFromColumn'];
         const toColumn = n['qsl:joinToColumn'];
         if (!fromColumn || !toColumn) break; // N:M aggregate — no literal keys; skip for path-finding
         joinEdges.push(
-          JoinEdgeSchema.parse({
-            fromTable: tableOfClassIri(n['rdfs:domain']['@id']),
-            fromColumn,
-            toTable: tableOfClassIri(n['rdfs:range']['@id']),
-            toColumn,
-            cardinality: n['qsl:cardinality'] ?? 'many-to-one',
-            confidence: n['qsl:confidence'],
-            provenance: n['qsl:provenance'],
-          }),
+          JoinEdgeSchema.parse({ fromTable, fromColumn, toTable, toColumn, cardinality, confidence: n['qsl:confidence'], provenance: n['qsl:provenance'] }),
         );
         break;
       }

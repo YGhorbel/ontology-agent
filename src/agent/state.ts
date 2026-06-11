@@ -8,7 +8,7 @@
  */
 import { Annotation } from '@langchain/langgraph';
 import type { CanonicalSchema } from '../types/canonical-schema.js';
-import type { ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
+import type { ForeignKeyCandidate, CompositeForeignKeyCandidate } from '../types/foreign-key-candidate.js';
 import type { ColumnFact } from '../types/column-fact.js';
 import type {
   ConceptCandidate,
@@ -35,6 +35,11 @@ export const OntologyStateAnnotation = Annotation.Root({
   }),
   /** Per-column query metadata (type, keyness, numeric-as-text, value dictionaries); set by relationship-discover. */
   columnFacts: Annotation<ColumnFact[] | null>({
+    reducer: (_prev, next) => next,
+    default: () => null,
+  }),
+  /** Bounded composite (2-column) FK candidates (Fix 7); set by relationship-discover. */
+  compositeForeignKeys: Annotation<CompositeForeignKeyCandidate[] | null>({
     reducer: (_prev, next) => next,
     default: () => null,
   }),

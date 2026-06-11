@@ -13,8 +13,11 @@ import { generateCandidatePairs } from '../../src/profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../src/profiling/foreign-keys.js';
 import { buildColumnFacts } from '../../src/profiling/column-facts.js';
 import { detectCumulativeMeasures } from '../../src/profiling/monotonicity.js';
-import { mergeRelationships } from '../../src/agent/nodes/03-relationship-link.js';
+import { mergeRelationships, compositeRelationships } from '../../src/agent/nodes/03-relationship-link.js';
 import { assembleOntology, partitionDataset } from '../../src/agent/assemble.js';
+import { discoverCompositeForeignKeys } from '../../src/profiling/composite-fk.js';
+import { buildOntologyIndex } from '../../src/query/ontology-index.js';
+import { buildJoinGraph, resolveJoinPath } from '../../src/query/join-graph.js';
 import type { ConceptCandidate } from '../../src/types/ontology.js';
 
 const dsn = process.env.ONTOLOGY_F1_DSN;
@@ -63,8 +66,21 @@ describe.skipIf(!dsn)('F1 integration (real DB)', () => {
       const { assertedGraph, candidateGraph } = partitionDataset(ontology, 0.5);
       expect(assertedGraph.length).toBeGreaterThan(0);
       expect(candidateGraph.every((n) => n['@type'] === 'qsl:CandidateRelationship')).toBe(true);
+
+      // Fix 7: composite FK laptimes(raceid,driverid) → results(raceid,driverid), and a
+      // joinpath laptimes→constructors routes through a multi-column (composite) edge.
+      const composites = await discoverCompositeForeignKeys(client, schema, fks, profiles);
+      const lapToResults = composites.find((c) => c.sourceTable === 'laptimes' && c.targetTable === 'results');
+      expect(lapToResults).toBeTruthy();
+      expect(lapToResults!.sourceColumns.slice().sort()).toEqual(['driverid', 'raceid']);
+
+      const fullRels = [...relationships, ...compositeRelationships(composites)];
+      const index = buildOntologyIndex(assembleOntology(concepts, fullRels, [], facts));
+      const graph = buildJoinGraph(index.joinEdges);
+      const plan = resolveJoinPath(graph, ['laptimes', 'constructors'], {});
+      expect(plan.clauses.some((c) => c.on.length >= 2)).toBe(true); // composite multi-key hop used
     } finally {
       await client.close();
     }
-  }, 60000);
+  }, 120000);
 });

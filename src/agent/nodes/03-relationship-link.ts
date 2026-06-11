@@ -15,7 +15,7 @@
  */
 import type { CanonicalSchema } from '../../types/canonical-schema.js';
 import type { ColumnFact } from '../../types/column-fact.js';
-import type { ForeignKeyCandidate } from '../../types/foreign-key-candidate.js';
+import type { ForeignKeyCandidate, CompositeForeignKeyCandidate } from '../../types/foreign-key-candidate.js';
 import { classIri, type Relationship } from '../../types/ontology.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
@@ -154,6 +154,23 @@ export function mergeRelationships(
   return relationships;
 }
 
+/** Map bounded composite (2-column) FK candidates to direct child→parent object properties (Fix 7). */
+export function compositeRelationships(composites: CompositeForeignKeyCandidate[]): Relationship[] {
+  return composites.map((c) => ({
+    kind: 'objectProperty',
+    source: { class: classIri(c.sourceTable) },
+    target: { class: classIri(c.targetTable) },
+    predicate: predicateFromColumn(c.targetTable),
+    cardinality: 'many-to-one', // child rows → one (approximately unique) parent pair
+    provenance: 'discovered',
+    confidence: c.score,
+    junctionTable: null,
+    joinColumns: null,
+    compositeJoin: { fromColumns: c.sourceColumns, toColumns: c.targetColumns },
+    derivedFrom: { table: c.sourceTable, foreignKey: `comp__${c.targetTable}` },
+  }));
+}
+
 /** Declared-only relationships (no profiling). Retained for direct/unit use. */
 export function deriveRelationships(schema: CanonicalSchema): Relationship[] {
   return mergeRelationships(schema, []);
@@ -163,8 +180,8 @@ export function createRelationshipLinkNode() {
   return async function relationshipLink(state: OntologyState): Promise<OntologyStateUpdate> {
     const schema = state.canonicalSchema;
     if (!schema) throw new Error('relationship-link: canonicalSchema is missing (node 1 did not run).');
-    return {
-      relationships: mergeRelationships(schema, state.foreignKeyCandidates ?? [], undefined, state.columnFacts ?? []),
-    };
+    const unary = mergeRelationships(schema, state.foreignKeyCandidates ?? [], undefined, state.columnFacts ?? []);
+    const composite = compositeRelationships(state.compositeForeignKeys ?? []);
+    return { relationships: [...unary, ...composite] };
   };
 }
