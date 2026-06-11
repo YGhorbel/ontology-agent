@@ -21,6 +21,7 @@ import {
   checkFormulaDryRun,
   dryRunEnabled,
 } from '../../validation/formula-validator.js';
+import { normalize, singularize } from '../../query/text-normalize.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
 const FORMULA_TOKEN = /\b([a-zA-Z_][A-Za-z0-9_]*)\.([a-zA-Z_][A-Za-z0-9_]*)\b/g;
@@ -148,6 +149,52 @@ export function validateOntology(
  * @param connect optional connector to the *target* DB; enables the Fix 2 formula
  *   dry-run. Omitted in pure unit tests, which then run static checks only.
  */
+/** Normalize a label for collision comparison: lowercase, strip punctuation, singularize. */
+const normLabel = (s: string): string => normalize(s).split(' ').map(singularize).filter(Boolean).join(' ');
+
+/**
+ * Fix 8 — drop a generated altLabel that collides with a DIFFERENT property/class's concept
+ * (its prefLabel, its `table column`, or its column name). Prevents `results.grid`'s
+ * "Qualifying position" from hijacking queries that mean `qualifying.position`. Mutates the
+ * graph and returns warnings (the run is not failed — a dropped synonym is a soft fix).
+ */
+export function pruneCollidingAltLabels(ontology: OntologyJsonLd): string[] {
+  const warnings: string[] = [];
+  const owners = new Map<string, Set<string>>();
+  const own = (identity: string, id: string): void => {
+    if (!identity) return;
+    const set = owners.get(identity) ?? new Set<string>();
+    set.add(id);
+    owners.set(identity, set);
+  };
+  for (const n of ontology['@graph']) {
+    if (n['@type'] === 'owl:Class') {
+      own(normLabel(n['skos:prefLabel']), n['@id']);
+      own(normLabel(n['qsl:mapsToTable']), n['@id']);
+    } else if (n['@type'] === 'owl:DatatypeProperty') {
+      own(normLabel(n['skos:prefLabel']), n['@id']);
+      own(normLabel(`${n['qsl:mapsToTable']} ${n['qsl:mapsToColumn']}`), n['@id']);
+      own(normLabel(n['qsl:mapsToColumn']), n['@id']);
+    }
+  }
+  for (const n of ontology['@graph']) {
+    if (n['@type'] !== 'owl:Class' && n['@type'] !== 'owl:DatatypeProperty') continue;
+    const alt = n['skos:altLabel'];
+    if (!alt || alt.length === 0) continue;
+    const kept: string[] = [];
+    for (const a of alt) {
+      const foreign = [...(owners.get(normLabel(a)) ?? [])].filter((o) => o !== n['@id']);
+      if (foreign.length > 0) warnings.push(`dropped altLabel "${a}" on ${n['@id']} — collides with ${foreign.join(', ')}`);
+      else kept.push(a);
+    }
+    if (kept.length !== alt.length) {
+      if (kept.length > 0) n['skos:altLabel'] = kept;
+      else delete (n as { 'skos:altLabel'?: string[] })['skos:altLabel'];
+    }
+  }
+  return warnings;
+}
+
 export function createValidateNode(connect?: SchemaConnector) {
   return async function validate(state: OntologyState): Promise<OntologyStateUpdate> {
     const { canonicalSchema, conceptCandidates, relationships, capabilities } = state;
@@ -156,9 +203,14 @@ export function createValidateNode(connect?: SchemaConnector) {
     }
     const columnFacts = state.columnFacts ?? [];
     const ontology = assembleOntology(conceptCandidates, relationships, capabilities, columnFacts);
+
+    // Fix 8: strip altLabels that collide with a different concept (soft — warn, don't fail).
+    for (const w of pruneCollidingAltLabels(ontology)) console.warn(`[validate] ${w}`);
+
     const validationErrors = validateOntology(ontology, canonicalSchema, columnFacts);
 
     // Fix 2 dry-run (DB) — only metrics that already passed parse/bind, to avoid noise.
+    let dryRanFormulas = false;
     if (connect && state.pgConnectionString && dryRunEnabled()) {
       const brokenSubjects = new Set(
         validationErrors
@@ -186,6 +238,19 @@ export function createValidateNode(connect?: SchemaConnector) {
         } finally {
           await client.close();
         }
+      }
+      dryRanFormulas = true;
+    }
+
+    // Fix 9: a metric that passed every deterministic check (parse/bind/type/dry-run/temporality)
+    // is upgraded to `llm-validated`. Without a dry-run we can't certify it — it stays `llm`.
+    if (dryRanFormulas) {
+      const failedSubjects = new Set(validationErrors.map((e) => e.subject));
+      for (const n of ontology['@graph']) {
+        if (n['@type'] !== 'qsl:Capability' || n['qsl:kind'] !== 'metric') continue;
+        if (n['qsl:provenance'] !== 'llm' || !n['qsl:formulaHint'] || failedSubjects.has(n['@id'])) continue;
+        n['qsl:provenance'] = 'llm-validated';
+        n['qsl:validationEvidence'] = ['parse', 'bind', 'type', 'dry-run', 'temporality'];
       }
     }
 

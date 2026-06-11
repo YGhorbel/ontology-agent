@@ -88,9 +88,9 @@ function relationshipTurtle(n: RelationshipNode, typeName: string): string {
     `    rdfs:domain ${ref(n['rdfs:domain']['@id'])} ;`,
     `    rdfs:range ${ref(n['rdfs:range']['@id'])} ;`,
     `    rdfs:label ${langLit(n['rdfs:label'])} ;`,
-    `    qsl:cardinality ${lit(n['qsl:cardinality'])} ;`,
     `    qsl:provenance ${lit(n['qsl:provenance'])} ;`,
   ];
+  if (n['qsl:cardinality']) parts.push(`    qsl:cardinality ${lit(n['qsl:cardinality'])} ;`);
   if (n['qsl:junctionTable']) parts.push(`    qsl:junctionTable ${lit(n['qsl:junctionTable'])} ;`);
   if (n['qsl:joinFromColumn']) parts.push(`    qsl:joinFromColumn ${lit(n['qsl:joinFromColumn'])} ;`);
   if (n['qsl:joinToColumn']) parts.push(`    qsl:joinToColumn ${lit(n['qsl:joinToColumn'])} ;`);
@@ -109,7 +109,12 @@ function capabilityTurtle(n: Extract<GraphNode, { '@type': 'qsl:Capability' }>):
   if (n['qsl:formulaHint']) parts.push(`    qsl:formulaHint ${lit(n['qsl:formulaHint'])} ;`);
   if (n['qsl:unit']) parts.push(`    qsl:unit ${lit(n['qsl:unit'])} ;`);
   if (n['qsl:preferredDirection']) parts.push(`    qsl:preferredDirection ${lit(n['qsl:preferredDirection'])} ;`);
-  parts.push(`    qsl:provenance ${lit(n['qsl:provenance'])} .`);
+  if (n['qsl:validationEvidence'] && n['qsl:validationEvidence'].length > 0) {
+    parts.push(`    qsl:provenance ${lit(n['qsl:provenance'])} ;`);
+    parts.push(`    qsl:validationEvidence ${plainList(n['qsl:validationEvidence'])} .`);
+  } else {
+    parts.push(`    qsl:provenance ${lit(n['qsl:provenance'])} .`);
+  }
   return parts.join('\n');
 }
 
@@ -188,6 +193,7 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string, headerN
     'qsl:CandidateRelationship a owl:Class .',
     'qsl:sourceFingerprint a owl:AnnotationProperty .',
     'qsl:knobs a owl:AnnotationProperty .',
+    'qsl:validationEvidence a owl:AnnotationProperty .',
   ].join('\n');
 
   const order: GraphNode['@type'][] = ['owl:Class', 'owl:DatatypeProperty', 'owl:ObjectProperty', 'qsl:Capability'];

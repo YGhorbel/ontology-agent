@@ -32,6 +32,12 @@ export const exportMinConfFromEnv = (): number => {
   return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.5;
 };
 
+/** Min confidence for an edge's `qsl:cardinality` to be trustworthy enough to emit (Fix 4). */
+export const cardinalityMinConfFromEnv = (): number => {
+  const raw = Number(process.env.ONTOLOGY_CARDINALITY_MIN_CONF);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.5;
+};
+
 const slug = (s: string): string =>
   s
     .toLowerCase()
@@ -97,7 +103,8 @@ function relationshipNode(r: Relationship): GraphNode {
     'rdfs:domain': { '@id': r.source.class },
     'rdfs:range': { '@id': r.target.class },
     'rdfs:label': r.predicate,
-    'qsl:cardinality': r.cardinality,
+    // Fix 4: wrong cardinality is worse than absent — omit it on low-confidence edges.
+    ...(r.confidence >= cardinalityMinConfFromEnv() ? { 'qsl:cardinality': r.cardinality } : {}),
     'qsl:provenance': r.provenance,
     'qsl:confidence': r.confidence,
     ...(r.junctionTable ? { 'qsl:junctionTable': r.junctionTable } : {}),
@@ -125,6 +132,7 @@ function capabilityNode(cap: Capability, index: number, uniqueId: (base: string)
     ...(cap.unit ? { 'qsl:unit': cap.unit } : {}),
     ...(cap.preferredDirection ? { 'qsl:preferredDirection': cap.preferredDirection } : {}),
     'qsl:provenance': cap.provenance,
+    ...(cap.validationEvidence && cap.validationEvidence.length > 0 ? { 'qsl:validationEvidence': cap.validationEvidence } : {}),
   };
 }
 

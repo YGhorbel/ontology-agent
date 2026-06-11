@@ -121,7 +121,7 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
             fromColumn,
             toTable: tableOfClassIri(n['rdfs:range']['@id']),
             toColumn,
-            cardinality: n['qsl:cardinality'],
+            cardinality: n['qsl:cardinality'] ?? 'many-to-one',
             confidence: n['qsl:confidence'],
             provenance: n['qsl:provenance'],
           }),

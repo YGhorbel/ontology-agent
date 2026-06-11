@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 
-const Cardinality = z.enum(['one-to-one', 'one-to-many', 'many-to-many']);
+const Cardinality = z.enum(['one-to-one', 'one-to-many', 'many-to-one', 'many-to-many']);
 const Provenance = z.enum(['declared', 'discovered', 'inferred-name', 'co-reference']);
 
 /**

@@ -261,6 +261,7 @@ where a catalog-only approach would leave holes.
 | `ONTOLOGY_MONOTONIC_MIN_RATIO` | `0.99` | Min fraction of non-negative deltas for a measure to be tagged `cumulative-snapshot` |
 | `ONTOLOGY_EXPORT_MIN_CONF` | `0.5` | Min confidence for a *discovered* edge to publish in the asserted graph; below it the edge is a `qsl:CandidateRelationship` (`declared`/`inferred-name` always asserted) |
 | `ONTOLOGY_BUILD_NUMBER` | *(epoch s)* | Monotonic build number stamped into the header's `owl:versionInfo`; defaults to the run's epoch seconds |
+| `ONTOLOGY_CARDINALITY_MIN_CONF` | `0.5` | Min edge confidence for `qsl:cardinality` to be emitted — below it the (untrustworthy) cardinality is omitted |
 
 ---
 
@@ -298,6 +299,21 @@ knob values used. Uniqueness is now provenance-tagged: `qsl:isUnique` for constr
 (declared PK/UNIQUE) columns, `qsl:observedUnique` for profiling-observed uniqueness (e.g.
 `races.date` — unique in this snapshot, not guaranteed). **Output shape version: `qsl/v2`**
 (breaking change vs `qsl/v1`: relationship tiering, header, observed-vs-declared uniqueness).
+
+### Cardinality, label hygiene & capability provenance (Fix 4/8/9)
+
+- **Cardinality** is derived from the join columns' uniqueness, read **domain(source) side
+  first**: both unique → `one-to-one`; source non-unique + target unique → `many-to-one` (a
+  fact→dimension FK). Edges below `ONTOLOGY_CARDINALITY_MIN_CONF` omit `qsl:cardinality` —
+  absent metadata beats wrong metadata.
+- **altLabel guard**: node ⑤ drops a generated `skos:altLabel` that collides with a *different*
+  property/class's concept (its prefLabel, `table column`, or column name) — e.g. `results.grid`
+  cannot keep "Qualifying position" while `qualifying.position` exists. A dropped synonym warns;
+  it never fails the run.
+- **Capability provenance** now has three tiers: `llm`, `deterministic-fallback`, and
+  `llm-validated` — a metric whose formula passed every deterministic check (parse, bind, type,
+  dry-run, temporality) is upgraded to `llm-validated` with `qsl:validationEvidence`. With the
+  dry-run disabled it stays `llm` (can't be certified).
 
 ---
 

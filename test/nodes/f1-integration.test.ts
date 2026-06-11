@@ -45,7 +45,10 @@ describe.skipIf(!dsn)('F1 integration (real DB)', () => {
 
       // Fix 5: assembling the full discovered graph dedupes @ids (no throw) and the export
       // tiering splits declared/high-confidence from low-confidence value-overlap noise.
-      const relationships = mergeRelationships(schema, fks, 0);
+      const relationships = mergeRelationships(schema, fks, 0, facts);
+      // Fix 4: a declared fact→dimension FK reads many-to-one (results.driverid → drivers).
+      const factToDim = relationships.find((r) => r.derivedFrom.foreignKey === 'results_driverid_fkey');
+      expect(factToDim?.cardinality).toBe('many-to-one');
       const concepts: ConceptCandidate[] = schema.tables.map((t) => ({
         source: { table: t.name },
         ontologyKind: 'Class',

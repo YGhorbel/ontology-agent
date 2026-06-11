@@ -44,7 +44,12 @@ export const RelationshipSchema = z.object({
   /** Ontology class IRI (range). */
   target: z.object({ class: z.string() }),
   predicate: z.string(),
-  cardinality: z.enum(['one-to-one', 'one-to-many', 'many-to-many']),
+  /**
+   * Cardinality read **domain(source) side first** — e.g. a fact→dimension FK is
+   * `many-to-one`. Derived from the join columns' uniqueness (Fix 4): both unique →
+   * `one-to-one`; source non-unique + target unique → `many-to-one`.
+   */
+  cardinality: z.enum(['one-to-one', 'one-to-many', 'many-to-one', 'many-to-many']),
   /**
    * How the relationship was established: `declared` (catalog FK constraint),
    * `discovered` (a profiling-verified inclusion dependency), or `inferred-name`
@@ -73,8 +78,13 @@ export const CapabilitySchema = z.object({
    * polarity behind "best/worst/fastest/slowest". Declared by the LLM so ranking
    * direction is ontology data, not a hardcoded keyword guess. */
   preferredDirection: z.enum(['higher', 'lower']).optional(),
-  /** Auditable origin: LLM-inferred vs deterministic safety-net. */
-  provenance: z.enum(['llm', 'deterministic-fallback']).default('llm'),
+  /**
+   * Auditable origin: `llm` (inferred), `deterministic-fallback` (safety-net), or
+   * `llm-validated` (inferred AND it passed every deterministic check — Fix 9).
+   */
+  provenance: z.enum(['llm', 'deterministic-fallback', 'llm-validated']).default('llm'),
+  /** Which deterministic checks an `llm-validated` capability passed. */
+  validationEvidence: z.array(z.string()).optional(),
 });
 export type Capability = z.infer<typeof CapabilitySchema>;
 
@@ -135,7 +145,8 @@ const ObjectPropertyNodeSchema = z.object({
   'rdfs:domain': z.object({ '@id': z.string() }),
   'rdfs:range': z.object({ '@id': z.string() }),
   'rdfs:label': z.string(),
-  'qsl:cardinality': z.string(),
+  /** Omitted on low-confidence edges (Fix 4) — absent metadata beats wrong metadata. */
+  'qsl:cardinality': z.string().optional(),
   'qsl:provenance': z.enum(['declared', 'discovered', 'inferred-name']),
   'qsl:confidence': z.number().min(0).max(1),
   'qsl:junctionTable': z.string().optional(),
@@ -154,7 +165,8 @@ const CapabilityNodeSchema = z.object({
   'qsl:formulaHint': z.string().optional(),
   'qsl:unit': z.string().optional(),
   'qsl:preferredDirection': z.enum(['higher', 'lower']).optional(),
-  'qsl:provenance': z.enum(['llm', 'deterministic-fallback']),
+  'qsl:provenance': z.enum(['llm', 'deterministic-fallback', 'llm-validated']),
+  'qsl:validationEvidence': z.array(z.string()).optional(),
 });
 
 export const GraphNodeSchema = z.discriminatedUnion('@type', [

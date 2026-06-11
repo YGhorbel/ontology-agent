@@ -14,9 +14,28 @@
  * (the junction table is recorded, not reified into a class).
  */
 import type { CanonicalSchema } from '../../types/canonical-schema.js';
+import type { ColumnFact } from '../../types/column-fact.js';
 import type { ForeignKeyCandidate } from '../../types/foreign-key-candidate.js';
 import { classIri, type Relationship } from '../../types/ontology.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
+
+/**
+ * Derive cardinality from the join columns' uniqueness (Fix 4), read domain(source)
+ * side first. Returns null when the target side's uniqueness is unknown — the caller
+ * then keeps the profiling-inferred default rather than fabricate a direction.
+ */
+function deriveCardinality(
+  uniq: Map<string, boolean>,
+  fromTable: string,
+  fromColumn: string,
+  toTable: string,
+  toColumn: string,
+): Relationship['cardinality'] | null {
+  const toUnique = uniq.get(`${toTable}.${toColumn}`);
+  if (toUnique !== true) return null; // FK target should be a key; if not observed-unique, don't guess
+  const fromUnique = uniq.get(`${fromTable}.${fromColumn}`) === true;
+  return fromUnique ? 'one-to-one' : 'many-to-one';
+}
 
 /**
  * FK-likelihood floor for promoting a *discovered* FK. Default 0 = keep every
@@ -54,6 +73,7 @@ export function mergeRelationships(
   schema: CanonicalSchema,
   candidates: ForeignKeyCandidate[],
   minScore: number = minScoreFromEnv(),
+  columnFacts: ColumnFact[] = [],
 ): Relationship[] {
   // Index unary candidates by their 4-tuple so a declared FK can borrow the
   // profiling-inferred cardinality (1:1 vs 1:N) instead of the hardcoded default.
@@ -63,6 +83,10 @@ export function mergeRelationships(
       byTuple.set(fkKey(c.sourceTable, c.sourceColumn, c.targetTable, c.targetColumn), c);
     }
   }
+
+  // Uniqueness of each column (declared or observed) → trustworthy cardinality (Fix 4).
+  const uniq = new Map<string, boolean>();
+  for (const f of columnFacts) uniq.set(`${f.table}.${f.column}`, f.isUnique);
 
   const seen = new Set<string>();
   const relationships: Relationship[] = [];
@@ -76,7 +100,10 @@ export function mergeRelationships(
       source: { class: classIri(fk.sourceTable) },
       target: { class: classIri(fk.targetTable) },
       predicate: predicateFromColumn(fk.sourceColumn),
-      cardinality: byTuple.get(k)?.cardinality ?? 'one-to-many',
+      cardinality:
+        deriveCardinality(uniq, fk.sourceTable, fk.sourceColumn, fk.targetTable, fk.targetColumn) ??
+        byTuple.get(k)?.cardinality ??
+        'one-to-many',
       provenance: 'declared',
       confidence: 1,
       junctionTable: null,
@@ -97,7 +124,8 @@ export function mergeRelationships(
       source: { class: classIri(c.sourceTable) },
       target: { class: classIri(c.targetTable) },
       predicate: predicateFromColumn(c.sourceColumn),
-      cardinality: c.cardinality,
+      cardinality:
+        deriveCardinality(uniq, c.sourceTable, c.sourceColumn, c.targetTable, c.targetColumn) ?? c.cardinality,
       provenance: c.evidence === 'name' ? 'inferred-name' : 'discovered',
       confidence: c.score,
       junctionTable: null,
@@ -135,6 +163,8 @@ export function createRelationshipLinkNode() {
   return async function relationshipLink(state: OntologyState): Promise<OntologyStateUpdate> {
     const schema = state.canonicalSchema;
     if (!schema) throw new Error('relationship-link: canonicalSchema is missing (node 1 did not run).');
-    return { relationships: mergeRelationships(schema, state.foreignKeyCandidates ?? []) };
+    return {
+      relationships: mergeRelationships(schema, state.foreignKeyCandidates ?? [], undefined, state.columnFacts ?? []),
+    };
   };
 }
