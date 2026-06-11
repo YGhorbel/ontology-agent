@@ -8,7 +8,7 @@
  */
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname, basename, join } from 'node:path';
-import { OntologyJsonLdSchema } from '../src/types/ontology.js';
+import { loadFullGraph } from '../src/query/ontology-index.js';
 import { toTurtle } from '../src/serialize/turtle.js';
 
 function latestJsonld(): string {
@@ -24,7 +24,7 @@ function latestJsonld(): string {
 
 function main(): void {
   const src = process.argv[2] ? resolve(process.argv[2]) : latestJsonld();
-  const ontology = OntologyJsonLdSchema.parse(JSON.parse(readFileSync(src, 'utf8')));
+  const ontology = loadFullGraph(JSON.parse(readFileSync(src, 'utf8')));
   // Recover the datasource id from the filename: ontology-<id>-<timestamp>.jsonld
   const datasourceId = basename(src).replace(/^ontology-/, '').replace(/-\d{4}-\d{2}-\d{2}T.*$/, '') || 'datasource';
   const ttlPath = join(dirname(src), basename(src).replace(/\.jsonld$/, '.ttl'));

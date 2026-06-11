@@ -102,8 +102,13 @@ export function deriveColumnFacts(
 ): ColumnFact[] {
   const unique = uniqueKeyColumns(keys);
   const primary = new Set<string>();
+  const declaredUnique = new Set<string>();
   for (const k of keys) {
-    if (k.columns.length === 1 && k.declared === 'primary') primary.add(key2(k.table, k.columns[0] as string));
+    if (k.columns.length !== 1) continue;
+    const id = key2(k.table, k.columns[0] as string);
+    if (k.declared === 'primary') primary.add(id);
+    // Constraint-backed uniqueness: a declared PRIMARY KEY or UNIQUE (vs. merely observed).
+    if (k.declared === 'primary' || k.declared === 'unique') declaredUnique.add(id);
   }
 
   return profiles.map((p) => {
@@ -116,6 +121,7 @@ export function deriveColumnFacts(
       dataType: p.dataType,
       isNumericText: isNumericText(p),
       isUnique: unique.has(id),
+      declaredUnique: declaredUnique.has(id),
       isPrimaryKey: primary.has(id),
       distinctCount: p.distinctCount,
       nullable: p.nullCount > 0, // data-observed: the column contains NULLs

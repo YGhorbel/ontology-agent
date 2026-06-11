@@ -40,7 +40,13 @@ full table. Profiling/recovery: `ONTOLOGY_IND_MIN_CONTAINMENT` (0.7), `ONTOLOGY_
 `ONTOLOGY_NAME_ONLY_CONFIDENCE` (0.65), `ONTOLOGY_FK_MIN_SCORE` (0). Concept grounding (Fix 1):
 `ONTOLOGY_ENUM_MAX_DISTINCT` (50), `ONTOLOGY_PROMPT_SAMPLE_VALUES` (15). Formula validation (Fix 2):
 `ONTOLOGY_VALIDATE_DRY_RUN` (true), `ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS` (5000). Cumulative measures
-(Fix 3): `ONTOLOGY_MONOTONIC_MIN_RATIO` (0.99).
+(Fix 3): `ONTOLOGY_MONOTONIC_MIN_RATIO` (0.99). Export tiering / header (Fix 5/6):
+`ONTOLOGY_EXPORT_MIN_CONF` (0.5), `ONTOLOGY_BUILD_NUMBER` (epoch seconds).
+
+`pnpm run generate` writes a tiered dataset (`.jsonld` + `.trig`): an **asserted** default graph
+(`owl:ObjectProperty`) plus a **candidate** graph (`qsl:CandidateRelationship`) for low-confidence
+edges, with an `owl:Ontology` header (version, timestamp, source fingerprint, knob values). Use
+`--export asserted` for the asserted graph only. Output shape version is **`qsl/v2`**.
 
 ## Prerequisites
 
@@ -69,8 +75,8 @@ npx tsx src/cli/generate.ts --datasource ecommerce
 ```
 
 Outputs:
-- **JSON-LD file:** `out/ontology-ecommerce-<timestamp>.jsonld`
-- **Turtle file:** `out/ontology-ecommerce-<timestamp>.ttl` (standards-compliant OWL/RDF — loadable in Protégé / WebVOWL / any RDF store)
+- **JSON-LD dataset:** `out/ontology-ecommerce-<timestamp>.jsonld` (asserted `@graph` + `qsl:candidateGraph` + header)
+- **TriG file:** `out/ontology-ecommerce-<timestamp>.trig` (asserted default graph + named `qsl:candidates` graph — standards-compliant OWL/RDF, loadable in Protégé / WebVOWL / any RDF store)
 - **Database:** rows in `ontology_fragment` (one per `@graph` node) + a row in `ontology_run`.
 
 Inspect the fragments:

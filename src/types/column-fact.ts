@@ -17,8 +17,10 @@ export const ColumnFactSchema = z.object({
   dataType: z.string(),
   /** A text-typed column whose values all parse as numbers → cast before sort/aggregate. */
   isNumericText: z.boolean(),
-  /** The column is a single-column unique key. */
+  /** The column is a single-column unique key (observed in the data). */
   isUnique: z.boolean(),
+  /** The uniqueness is constraint-backed (declared PRIMARY KEY or UNIQUE), not just observed. */
+  declaredUnique: z.boolean().optional(),
   /** The column is a declared single-column primary key. */
   isPrimaryKey: z.boolean(),
   /** Distinct value count, or null when not measured (non-profilable type). */

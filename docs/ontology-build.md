@@ -259,14 +259,17 @@ where a catalog-only approach would leave holes.
 | `ONTOLOGY_VALIDATE_DRY_RUN` | `true` | Whether node ⑤ executes a read-only `SELECT <formula>` dry-run per metric (`false` = parse/bind/type only) |
 | `ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS` | `5000` | `statement_timeout` for the formula dry-run and the monotonicity probe |
 | `ONTOLOGY_MONOTONIC_MIN_RATIO` | `0.99` | Min fraction of non-negative deltas for a measure to be tagged `cumulative-snapshot` |
+| `ONTOLOGY_EXPORT_MIN_CONF` | `0.5` | Min confidence for a *discovered* edge to publish in the asserted graph; below it the edge is a `qsl:CandidateRelationship` (`declared`/`inferred-name` always asserted) |
+| `ONTOLOGY_BUILD_NUMBER` | *(epoch s)* | Monotonic build number stamped into the header's `owl:versionInfo`; defaults to the run's epoch seconds |
 
 ---
 
 ## 8. Inspecting the result
 
 ```bash
-pnpm run generate --dsn "postgresql://user:pass@host:5432/db"   # build the ontology
-# then resolve a JOIN path over the discovered graph:
+pnpm run generate --dsn "postgresql://user:pass@host:5432/db"   # build the ontology (default: full)
+pnpm run generate --dsn "..." --export asserted                # asserted graph only, no candidates
+# then resolve a JOIN path over the FULL graph (asserted + candidates):
 F=$(ls -t out/ontology-*.jsonld | head -1)
 pnpm run joinpath --ontology "$F" --tables tableA,tableB,tableC
 ```
@@ -274,6 +277,27 @@ pnpm run joinpath --ontology "$F" --tables tableA,tableB,tableC
 Each emitted object property carries `qsl:provenance`, `qsl:confidence`, `qsl:joinFromColumn`,
 `qsl:joinToColumn` — so the join graph is fully reconstructable from the ontology alone, with
 the evidence for every edge visible.
+
+### Export tiering & header (Fix 5/6)
+
+The published artifact is split into two tiers so external consumers (LLM prompts, triple
+stores) aren't fed value-overlap noise as first-class facts:
+
+- **Asserted graph** (the JSON-LD `@graph` / the TriG default graph): `declared` and
+  `inferred-name` edges, plus `discovered` edges with `confidence ≥ ONTOLOGY_EXPORT_MIN_CONF`,
+  typed `owl:ObjectProperty`.
+- **Candidate graph** (the JSON-LD `qsl:candidateGraph` array / a named `qsl:candidates` TriG
+  graph): everything below the bar, typed **`qsl:CandidateRelationship`** — never
+  `owl:ObjectProperty`. All evidence fields are kept. The query resolver/`joinpath` load the
+  **full** graph (asserted ∪ candidates) via `loadFullGraph`, so internal behavior is unchanged.
+
+Every build carries an `owl:Ontology` **header**: a per-database base IRI, `owl:versionInfo`
+(`qsl/v2` + generator semver + monotonic build number), `dcterms:created`, a
+`qsl:sourceFingerprint` (sha256 of DSN host+db+schema — never credentials), and the `ONTOLOGY_*`
+knob values used. Uniqueness is now provenance-tagged: `qsl:isUnique` for constraint-backed
+(declared PK/UNIQUE) columns, `qsl:observedUnique` for profiling-observed uniqueness (e.g.
+`races.date` — unique in this snapshot, not guaranteed). **Output shape version: `qsl/v2`**
+(breaking change vs `qsl/v1`: relationship tiering, header, observed-vs-declared uniqueness).
 
 ---
 

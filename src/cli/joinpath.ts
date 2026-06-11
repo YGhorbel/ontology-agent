@@ -8,8 +8,7 @@
  * requested tables, weighted so declared FKs are preferred over discovered ones.
  */
 import { readFileSync } from 'node:fs';
-import { OntologyJsonLdSchema } from '../types/ontology.js';
-import { buildOntologyIndex } from '../query/ontology-index.js';
+import { buildOntologyIndex, loadFullGraph } from '../query/ontology-index.js';
 import { buildJoinGraph, resolveJoinPath, resolveAllPaths } from '../query/join-graph.js';
 
 function parseArg(flag: string): string | undefined {
@@ -36,7 +35,7 @@ function main(): number {
   const k = pathsArg !== undefined ? Number(pathsArg) : undefined;
 
   const raw = JSON.parse(readFileSync(ontologyPath, 'utf8')) as unknown;
-  const ontology = OntologyJsonLdSchema.parse(raw);
+  const ontology = loadFullGraph(raw);
   const index = buildOntologyIndex(ontology);
   const graph = buildJoinGraph(index.joinEdges);
 

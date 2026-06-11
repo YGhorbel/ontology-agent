@@ -18,8 +18,10 @@ import { resolve } from 'node:path';
 import 'dotenv/config';
 import { buildProductionGraph } from '../agent/graph.js';
 import { createOntologyStore, type RunStatus } from '../storage/ontology-store.js';
-import { toTurtle } from '../serialize/turtle.js';
-import type { OntologyJsonLd } from '../types/ontology.js';
+import { toTrig } from '../serialize/turtle.js';
+import { partitionDataset } from '../agent/assemble.js';
+import { buildOntologyHeader } from '../serialize/ontology-header.js';
+import type { OntologyDataset, OntologyJsonLd } from '../types/ontology.js';
 
 function parseArg(flag: string): string | undefined {
   const argv = process.argv.slice(2);
@@ -78,13 +80,35 @@ async function main(): Promise<number> {
     const validationErrors = final.validationErrors ?? [];
     if (!ontology) throw new Error('Pipeline produced no ontology.');
 
-    // Write JSON-LD + Turtle output.
+    // Tier into asserted + candidate graphs and attach the reproducibility header (Fix 5/6).
+    const exportMode = (parseArg('--export') ?? 'full').toLowerCase();
+    if (exportMode !== 'full' && exportMode !== 'asserted') {
+      console.error('--export must be "asserted" or "full".');
+      return 2;
+    }
+    const { assertedGraph, candidateGraph } = partitionDataset(ontology);
+    const header = buildOntologyHeader({
+      datasourceId,
+      dsn: targetDsn,
+      schemaList: ['public'],
+      generatorVersion: process.env.npm_package_version ?? '0.1.0',
+      buildNumber: Number(process.env.ONTOLOGY_BUILD_NUMBER) || Math.floor(startedAt.getTime() / 1000),
+      createdIso: startedAt.toISOString(),
+    });
+    const dataset: OntologyDataset = {
+      '@context': ontology['@context'],
+      'qsl:ontology': header,
+      '@graph': assertedGraph,
+      ...(exportMode === 'full' && candidateGraph.length > 0 ? { 'qsl:candidateGraph': candidateGraph } : {}),
+    };
+
+    // Write JSON-LD dataset + TriG (asserted default graph + named candidate graph).
     mkdirSync(outDir, { recursive: true });
     const stamp = startedAt.toISOString().replace(/[:.]/g, '-');
     const outPath = resolve(outDir, `ontology-${datasourceId}-${stamp}.jsonld`);
-    writeFileSync(outPath, JSON.stringify(ontology, null, 2), 'utf8');
-    const ttlPath = resolve(outDir, `ontology-${datasourceId}-${stamp}.ttl`);
-    writeFileSync(ttlPath, toTurtle(ontology, datasourceId), 'utf8');
+    writeFileSync(outPath, JSON.stringify(dataset, null, 2), 'utf8');
+    const ttlPath = resolve(outDir, `ontology-${datasourceId}-${stamp}.trig`);
+    writeFileSync(ttlPath, toTrig(dataset, datasourceId), 'utf8');
 
     // Persist fragments + run record.
     await store.applyDdl();
@@ -102,7 +126,8 @@ async function main(): Promise<number> {
     // Summary.
     console.log(`\n=== Ontology generation ${status.toUpperCase()} ===`);
     console.log(`JSON-LD written to:   ${outPath}`);
-    console.log(`Turtle written to:    ${ttlPath}`);
+    console.log(`TriG written to:      ${ttlPath}`);
+    console.log(`Export profile:       ${exportMode} (asserted ${assertedGraph.length} nodes, candidate ${candidateGraph.length} edges)`);
     console.log(`Fragments persisted:  ${fragmentCount} (datasource_id='${datasourceId}')`);
     console.log(`Validation errors:    ${validationErrors.length}`);
     console.log(`Retries used:         ${final.retryCount}`);

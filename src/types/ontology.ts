@@ -115,7 +115,10 @@ const DatatypePropertyNodeSchema = z.object({
   'qsl:dataType': z.string().optional(),
   'qsl:isNumericText': z.boolean().optional(),
   'qsl:isPrimaryKey': z.boolean().optional(),
+  /** Constraint-backed uniqueness (declared PRIMARY KEY / UNIQUE). */
   'qsl:isUnique': z.boolean().optional(),
+  /** Profiling-observed uniqueness — unique in this snapshot, not guaranteed by a constraint. */
+  'qsl:observedUnique': z.boolean().optional(),
   'qsl:distinctCount': z.number().int().nonnegative().optional(),
   'qsl:sampleValues': z.array(z.string()).optional(),
   /** A sentinel value (e.g. '-', 'N/A', '') used in the data to mean unknown/missing. */
@@ -167,6 +170,47 @@ export const OntologyJsonLdSchema = z.object({
   '@graph': z.array(GraphNodeSchema),
 });
 export type OntologyJsonLd = z.infer<typeof OntologyJsonLdSchema>;
+
+// ---------------------------------------------------------------------------
+// Export tiering (Fix 5) + ontology header (Fix 6)
+// ---------------------------------------------------------------------------
+
+/**
+ * A low-confidence discovered relationship, published OUTSIDE the asserted graph and
+ * NOT typed `owl:ObjectProperty`, so consumers never auto-join on value-overlap noise.
+ * Same shape as an object property otherwise (all evidence fields kept).
+ */
+export const CandidateRelationshipNodeSchema = ObjectPropertyNodeSchema.extend({
+  '@type': z.literal('qsl:CandidateRelationship'),
+});
+export type CandidateRelationshipNode = z.infer<typeof CandidateRelationshipNodeSchema>;
+
+/** The `owl:Ontology` header: provenance + reproducibility metadata for one build. */
+export const OntologyHeaderNodeSchema = z.object({
+  '@id': z.string(),
+  '@type': z.literal('owl:Ontology'),
+  'rdfs:label': z.string().optional(),
+  'owl:versionInfo': z.string(),
+  'dcterms:created': z.string(),
+  /** Stable hash of DSN host+db+schema list — never credentials. */
+  'qsl:sourceFingerprint': z.string(),
+  /** Serialized `ONTOLOGY_*` knob values used for the run (threshold reproducibility). */
+  'qsl:knobs': z.string().optional(),
+});
+export type OntologyHeaderNode = z.infer<typeof OntologyHeaderNodeSchema>;
+
+/**
+ * The published dataset: an asserted default graph + an optional candidate graph + an
+ * optional header, all keyed so the on-disk JSON-LD round-trips. The query layer loads
+ * the *full* graph (asserted ∪ candidates re-typed) via `loadFullGraph`.
+ */
+export const OntologyDatasetSchema = z.object({
+  '@context': JsonLdContextSchema,
+  'qsl:ontology': OntologyHeaderNodeSchema.optional(),
+  '@graph': z.array(GraphNodeSchema),
+  'qsl:candidateGraph': z.array(CandidateRelationshipNodeSchema).optional(),
+});
+export type OntologyDataset = z.infer<typeof OntologyDatasetSchema>;
 
 // ---------------------------------------------------------------------------
 // Validation errors (collected, not thrown, by node 5)

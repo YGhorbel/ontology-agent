@@ -9,8 +9,25 @@
  * are skipped here — the junction class is already connected by its two unary FK
  * edges.
  */
-import type { OntologyJsonLd } from '../types/ontology.js';
+import { OntologyJsonLdSchema, type OntologyJsonLd } from '../types/ontology.js';
 import { JoinEdgeSchema, type JoinEdge } from '../types/query-plan.js';
+
+/**
+ * Load the FULL graph from a generated dataset file (Fix 5): merge the asserted `@graph`
+ * with the `qsl:candidateGraph` (re-typed back to `owl:ObjectProperty`) and drop the
+ * `owl:Ontology` header node, yielding a plain `OntologyJsonLd` for the resolver. Older
+ * single-graph files (no candidate graph) load unchanged. The query layer always loads full.
+ */
+export function loadFullGraph(raw: unknown): OntologyJsonLd {
+  const ds = (raw ?? {}) as Record<string, unknown>;
+  const graph = Array.isArray(ds['@graph']) ? (ds['@graph'] as Array<Record<string, unknown>>) : [];
+  const candidates = Array.isArray(ds['qsl:candidateGraph']) ? (ds['qsl:candidateGraph'] as Array<Record<string, unknown>>) : [];
+  const merged = [
+    ...graph.filter((n) => n['@type'] !== 'owl:Ontology'),
+    ...candidates.map((c) => ({ ...c, '@type': 'owl:ObjectProperty' })),
+  ];
+  return OntologyJsonLdSchema.parse({ '@context': ds['@context'], '@graph': merged });
+}
 
 export interface ClassInfo {
   table: string;
@@ -87,7 +104,8 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
           ...(n['qsl:dataType'] !== undefined ? { dataType: n['qsl:dataType'] } : {}),
           ...(n['qsl:isNumericText'] !== undefined ? { isNumericText: n['qsl:isNumericText'] } : {}),
           ...(n['qsl:isPrimaryKey'] !== undefined ? { isPrimaryKey: n['qsl:isPrimaryKey'] } : {}),
-          ...(n['qsl:isUnique'] !== undefined ? { isUnique: n['qsl:isUnique'] } : {}),
+          // Effective uniqueness for query planning = constraint-backed OR profiling-observed.
+          ...(n['qsl:isUnique'] || n['qsl:observedUnique'] ? { isUnique: true } : {}),
           ...(n['qsl:sampleValues'] !== undefined ? { sampleValues: n['qsl:sampleValues'] } : {}),
         });
         columnsByTable.set(table, list);

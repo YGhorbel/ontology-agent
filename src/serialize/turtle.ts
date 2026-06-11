@@ -11,13 +11,21 @@
  *    (`owl:AnnotationProperty` / `owl:ObjectProperty`). `qsl:scopeClass`, domain and range
  *    are emitted as IRI references, not strings. (Class-as-scope is OWL 2 DL punning.)
  */
-import { QSL_BASE, type GraphNode, type OntologyJsonLd } from '../types/ontology.js';
+import {
+  QSL_BASE,
+  type CandidateRelationshipNode,
+  type GraphNode,
+  type OntologyDataset,
+  type OntologyHeaderNode,
+  type OntologyJsonLd,
+} from '../types/ontology.js';
 
 const PREFIXES = `@prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix qsl:  <${QSL_BASE}> .`;
 
 /** Expand a compact `qsl:...` IRI to a full IRI for use inside <...>. */
@@ -62,6 +70,7 @@ function datatypeTurtle(n: Extract<GraphNode, { '@type': 'owl:DatatypeProperty' 
   if (n['qsl:isNumericText']) preds.push('qsl:isNumericText true');
   if (n['qsl:isPrimaryKey']) preds.push('qsl:isPrimaryKey true');
   if (n['qsl:isUnique']) preds.push('qsl:isUnique true');
+  if (n['qsl:observedUnique']) preds.push('qsl:observedUnique true');
   if (n['qsl:distinctCount'] !== undefined) preds.push(`qsl:distinctCount ${n['qsl:distinctCount']}`);
   if (n['qsl:sampleValues'] && n['qsl:sampleValues'].length > 0) preds.push(`qsl:sampleValues ${plainList(n['qsl:sampleValues'])}`);
   if (n['qsl:nullPlaceholder'] !== undefined) preds.push(`qsl:nullPlaceholder ${lit(n['qsl:nullPlaceholder'])}`);
@@ -70,9 +79,12 @@ function datatypeTurtle(n: Extract<GraphNode, { '@type': 'owl:DatatypeProperty' 
   return `${ref(n['@id'])} a owl:DatatypeProperty ;\n    ${preds.join(' ;\n    ')} .`;
 }
 
-function objectTurtle(n: Extract<GraphNode, { '@type': 'owl:ObjectProperty' }>): string {
+type RelationshipNode = Extract<GraphNode, { '@type': 'owl:ObjectProperty' }> | CandidateRelationshipNode;
+
+/** Shared body for an object property / candidate relationship; only the rdf:type differs. */
+function relationshipTurtle(n: RelationshipNode, typeName: string): string {
   const parts = [
-    `${ref(n['@id'])} a owl:ObjectProperty ;`,
+    `${ref(n['@id'])} a ${typeName} ;`,
     `    rdfs:domain ${ref(n['rdfs:domain']['@id'])} ;`,
     `    rdfs:range ${ref(n['rdfs:range']['@id'])} ;`,
     `    rdfs:label ${langLit(n['rdfs:label'])} ;`,
@@ -85,6 +97,9 @@ function objectTurtle(n: Extract<GraphNode, { '@type': 'owl:ObjectProperty' }>):
   parts.push(`    qsl:confidence ${n['qsl:confidence']} .`);
   return parts.join('\n');
 }
+
+const objectTurtle = (n: Extract<GraphNode, { '@type': 'owl:ObjectProperty' }>): string =>
+  relationshipTurtle(n, 'owl:ObjectProperty');
 
 function capabilityTurtle(n: Extract<GraphNode, { '@type': 'qsl:Capability' }>): string {
   const parts = [`${ref(n['@id'])} a qsl:Capability ;`, `    qsl:kind ${lit(n['qsl:kind'])} ;`, `    qsl:scopeClass ${ref(n['qsl:scopeClass'])} ;`];
@@ -111,10 +126,37 @@ function nodeTurtle(n: GraphNode): string {
   }
 }
 
-export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string {
-  const header = `<${QSL_BASE}> a owl:Ontology ;
-    rdfs:label ${langLit(`Semantic layer for datasource "${datasourceId}"`)} ;
-    owl:versionInfo "qsl/v1" .`;
+/** Render the Fix 6 `owl:Ontology` header node, or a minimal default when absent. */
+function headerTurtle(node: OntologyHeaderNode | undefined, datasourceId: string): string {
+  if (!node) {
+    return `<${QSL_BASE}> a owl:Ontology ;\n    rdfs:label ${langLit(`Semantic layer for datasource "${datasourceId}"`)} ;\n    owl:versionInfo "qsl/v2" .`;
+  }
+  const parts = [`${ref(node['@id'])} a owl:Ontology ;`];
+  if (node['rdfs:label']) parts.push(`    rdfs:label ${langLit(node['rdfs:label'])} ;`);
+  parts.push(`    owl:versionInfo ${lit(node['owl:versionInfo'])} ;`);
+  parts.push(`    dcterms:created ${lit(node['dcterms:created'])} ;`);
+  if (node['qsl:knobs']) parts.push(`    qsl:knobs ${lit(node['qsl:knobs'])} ;`);
+  parts.push(`    qsl:sourceFingerprint ${lit(node['qsl:sourceFingerprint'])} .`);
+  return parts.join('\n');
+}
+
+const candidateTurtle = (n: CandidateRelationshipNode): string => relationshipTurtle(n, 'qsl:CandidateRelationship');
+
+/**
+ * Serialize a tiered dataset to TriG (Fix 5): the asserted graph as the default graph,
+ * the candidate relationships in a named `qsl:candidates` graph. The header + vocabulary
+ * sit outside any named graph.
+ */
+export function toTrig(dataset: OntologyDataset, datasourceId: string): string {
+  const asserted = toTurtle({ '@context': dataset['@context'], '@graph': dataset['@graph'] }, datasourceId, dataset['qsl:ontology']);
+  const candidates = dataset['qsl:candidateGraph'] ?? [];
+  if (candidates.length === 0) return asserted;
+  const block = candidates.map(candidateTurtle).join('\n\n');
+  return `${asserted}\n# --- Candidate relationships (low-confidence; not owl:ObjectProperty) ---\nqsl:candidates {\n${block}\n}\n`;
+}
+
+export function toTurtle(ontology: OntologyJsonLd, datasourceId: string, headerNode?: OntologyHeaderNode): string {
+  const header = headerTurtle(headerNode, datasourceId);
 
   // Declarations for the custom vocabulary used below.
   const vocab = [
@@ -142,6 +184,10 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string
     'qsl:nullPlaceholder a owl:AnnotationProperty .',
     'qsl:temporality a owl:AnnotationProperty .',
     'qsl:temporalityEvidence a owl:AnnotationProperty .',
+    'qsl:observedUnique a owl:AnnotationProperty .',
+    'qsl:CandidateRelationship a owl:Class .',
+    'qsl:sourceFingerprint a owl:AnnotationProperty .',
+    'qsl:knobs a owl:AnnotationProperty .',
   ].join('\n');
 
   const order: GraphNode['@type'][] = ['owl:Class', 'owl:DatatypeProperty', 'owl:ObjectProperty', 'qsl:Capability'];

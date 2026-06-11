@@ -98,14 +98,9 @@ describe('validateOntology', () => {
 
   it('flags duplicate prefLabels within the class scope', () => {
     const cands = baseCandidates();
-    cands.push({
-      source: { table: 'customers' },
-      ontologyKind: 'Class',
-      prefLabel: 'orders', // duplicates the orders class prefLabel
-      altLabel: [],
-      rdfsLabel: 'dup',
-      rdfsComment: 'dup',
-    });
+    // Give a *different* table the same prefLabel as another class (no @id collision).
+    const customers = cands.find((c) => c.ontologyKind === 'Class' && c.source.table === 'customers')!;
+    customers.prefLabel = 'orders'; // duplicates the orders class prefLabel
     const ontology = assembleOntology(cands, [], [revenueCapability]);
     const errors = validateOntology(ontology, ecommerceSchema);
     expect(errors.some((e) => e.rule === 'skos-preflabel-unique')).toBe(true);

@@ -11,8 +11,7 @@
  */
 import 'dotenv/config'; // load .env so --llm can read AZURE_OPENAI_*/OPENAI_API_KEY
 import { readFileSync } from 'node:fs';
-import { OntologyJsonLdSchema } from '../types/ontology.js';
-import { buildOntologyIndex } from '../query/ontology-index.js';
+import { buildOntologyIndex, loadFullGraph } from '../query/ontology-index.js';
 import { buildJoinGraph, resolveJoinPath } from '../query/join-graph.js';
 import { parseEvidence } from '../query/evidence.js';
 import { intentToSql, onSql } from '../query/intent-to-sql.js';
@@ -58,7 +57,7 @@ async function main(): Promise<number> {
   }
 
   const raw = JSON.parse(readFileSync(ontologyPath, 'utf8')) as unknown;
-  const ontology = OntologyJsonLdSchema.parse(raw);
+  const ontology = loadFullGraph(raw);
   const index = buildOntologyIndex(ontology);
 
   // Hints: BIRD evidence and/or a clarification pick (--pick "span=table.column").

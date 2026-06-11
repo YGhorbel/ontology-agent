@@ -21,8 +21,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as readline from 'node:readline';
 import { Client } from 'pg';
-import { OntologyJsonLdSchema } from '../types/ontology.js';
-import { buildOntologyIndex, type OntologyIndex } from '../query/ontology-index.js';
+import { buildOntologyIndex, loadFullGraph, type OntologyIndex } from '../query/ontology-index.js';
 import { buildJoinGraph, resolveJoinPath, resolveAllPaths } from '../query/join-graph.js';
 import { linkQuestion } from '../query/schema-linker.js';
 import { parseEvidence } from '../query/evidence.js';
@@ -233,7 +232,7 @@ async function main(): Promise<void> {
 
   let index: OntologyIndex;
   try {
-    const ontology = OntologyJsonLdSchema.parse(JSON.parse(readFileSync(ontologyPath, 'utf8')));
+    const ontology = loadFullGraph(JSON.parse(readFileSync(ontologyPath, 'utf8')));
     index = buildOntologyIndex(ontology);
   } catch (err) {
     console.error(`Failed to load ontology ${ontologyPath}: ${err instanceof Error ? err.message : err}`);

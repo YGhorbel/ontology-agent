@@ -10,6 +10,7 @@ import {
   capabilityIri,
   QSL_BASE,
   type Capability,
+  type CandidateRelationshipNode,
   type ConceptCandidate,
   type GraphNode,
   type OntologyJsonLd,
@@ -21,8 +22,15 @@ const JSONLD_CONTEXT = {
   owl: 'http://www.w3.org/2002/07/owl#',
   rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
   skos: 'http://www.w3.org/2004/02/skos/core#',
+  dcterms: 'http://purl.org/dc/terms/',
   qsl: QSL_BASE,
 } as const;
+
+/** Min confidence for a discovered edge to be published in the asserted graph (Fix 5). */
+export const exportMinConfFromEnv = (): number => {
+  const raw = Number(process.env.ONTOLOGY_EXPORT_MIN_CONF);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.5;
+};
 
 const slug = (s: string): string =>
   s
@@ -66,7 +74,12 @@ function datatypePropertyNode(c: ConceptCandidate, fact: ColumnFact | undefined)
           'qsl:dataType': fact.dataType,
           ...(fact.isNumericText ? { 'qsl:isNumericText': true } : {}),
           ...(fact.isPrimaryKey ? { 'qsl:isPrimaryKey': true } : {}),
-          ...(fact.isUnique ? { 'qsl:isUnique': true } : {}),
+          // Fix 6: constraint-backed uniqueness → isUnique; profiling-observed only → observedUnique.
+          ...(fact.declaredUnique || fact.isPrimaryKey
+            ? { 'qsl:isUnique': true }
+            : fact.isUnique
+              ? { 'qsl:observedUnique': true }
+              : {}),
           ...(fact.distinctCount !== null ? { 'qsl:distinctCount': fact.distinctCount } : {}),
           ...(fact.sampleValues.length > 0 ? { 'qsl:sampleValues': fact.sampleValues } : {}),
           ...(fact.nullPlaceholder !== undefined ? { 'qsl:nullPlaceholder': fact.nullPlaceholder } : {}),
@@ -141,5 +154,50 @@ export function assembleOntology(
     return id;
   };
   capabilities.forEach((cap, i) => graph.push(capabilityNode(cap, i, uniqueId)));
-  return { '@context': JSONLD_CONTEXT, '@graph': graph };
+  return { '@context': JSONLD_CONTEXT, '@graph': dedupeById(graph) };
+}
+
+/**
+ * Dedupe nodes by `@id` (Fix 5): identical content collapses to one; a true conflict
+ * (same `@id`, different content) is a generator bug and throws. Fixes the
+ * `races/nm__status` double-emission while never silently merging distinct edges.
+ */
+export function dedupeById(graph: GraphNode[]): GraphNode[] {
+  const byId = new Map<string, GraphNode>();
+  for (const n of graph) {
+    const prev = byId.get(n['@id']);
+    if (!prev) {
+      byId.set(n['@id'], n);
+      continue;
+    }
+    if (JSON.stringify(prev) !== JSON.stringify(n)) {
+      throw new Error(`assemble: conflicting duplicate @id "${n['@id']}" with differing content`);
+    }
+  }
+  return [...byId.values()];
+}
+
+/**
+ * Split the full graph into the published asserted graph and the candidate graph (Fix 5).
+ * Asserted relationships: provenance `declared`/`inferred-name`, or `discovered` with
+ * confidence ≥ `minConf`. Below the bar → re-typed `qsl:CandidateRelationship`, kept out
+ * of the asserted graph so external consumers never treat value-overlap noise as a join.
+ */
+export function partitionDataset(
+  ontology: OntologyJsonLd,
+  minConf: number = exportMinConfFromEnv(),
+): { assertedGraph: GraphNode[]; candidateGraph: CandidateRelationshipNode[] } {
+  const assertedGraph: GraphNode[] = [];
+  const candidateGraph: CandidateRelationshipNode[] = [];
+  for (const n of ontology['@graph']) {
+    if (n['@type'] !== 'owl:ObjectProperty') {
+      assertedGraph.push(n);
+      continue;
+    }
+    const asserted =
+      n['qsl:provenance'] === 'declared' || n['qsl:provenance'] === 'inferred-name' || n['qsl:confidence'] >= minConf;
+    if (asserted) assertedGraph.push(n);
+    else candidateGraph.push({ ...n, '@type': 'qsl:CandidateRelationship' });
+  }
+  return { assertedGraph, candidateGraph };
 }

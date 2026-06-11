@@ -13,6 +13,9 @@ import { generateCandidatePairs } from '../../src/profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../src/profiling/foreign-keys.js';
 import { buildColumnFacts } from '../../src/profiling/column-facts.js';
 import { detectCumulativeMeasures } from '../../src/profiling/monotonicity.js';
+import { mergeRelationships } from '../../src/agent/nodes/03-relationship-link.js';
+import { assembleOntology, partitionDataset } from '../../src/agent/assemble.js';
+import type { ConceptCandidate } from '../../src/types/ontology.js';
 
 const dsn = process.env.ONTOLOGY_F1_DSN;
 
@@ -34,6 +37,29 @@ describe.skipIf(!dsn)('F1 integration (real DB)', () => {
       const facts = await buildColumnFacts(client, profiles, keys);
       const status = facts.find((f) => f.table === 'constructorresults' && f.column === 'status');
       expect(status?.sampleValues).toContain('D');
+
+      // Fix 6: races.date is unique in the snapshot but not a declared key → observedUnique.
+      const dateFact = facts.find((f) => f.table === 'races' && f.column === 'date');
+      expect(dateFact?.isUnique).toBe(true);
+      expect(dateFact?.declaredUnique).toBe(false);
+
+      // Fix 5: assembling the full discovered graph dedupes @ids (no throw) and the export
+      // tiering splits declared/high-confidence from low-confidence value-overlap noise.
+      const relationships = mergeRelationships(schema, fks, 0);
+      const concepts: ConceptCandidate[] = schema.tables.map((t) => ({
+        source: { table: t.name },
+        ontologyKind: 'Class',
+        prefLabel: t.name,
+        altLabel: [],
+        rdfsLabel: t.name,
+        rdfsComment: t.name,
+      }));
+      const ontology = assembleOntology(concepts, relationships, [], facts);
+      const ids = ontology['@graph'].map((n) => n['@id']);
+      expect(new Set(ids).size).toBe(ids.length); // no duplicate @id survives
+      const { assertedGraph, candidateGraph } = partitionDataset(ontology, 0.5);
+      expect(assertedGraph.length).toBeGreaterThan(0);
+      expect(candidateGraph.every((n) => n['@type'] === 'qsl:CandidateRelationship')).toBe(true);
     } finally {
       await client.close();
     }
