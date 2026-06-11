@@ -68,19 +68,23 @@ describe('trigramSim', () => {
 });
 
 describe('directionFor', () => {
-  it('uses the map verbatim for unambiguous superlatives', () => {
-    expect(directionFor('highest', 'points')).toBe('desc');
-    expect(directionFor('lowest', 'points')).toBe('asc');
+  it('uses the map verbatim for value-naming superlatives (polarity-independent)', () => {
+    expect(directionFor('highest')).toBe('desc');
+    expect(directionFor('lowest')).toBe('asc');
   });
-  it('flips polarity-ambiguous words by the metric: speed-like → fastest is desc', () => {
-    expect(directionFor('fastest', 'fastest lap speed')).toBe('desc');
-    expect(directionFor('slowest', 'top speed')).toBe('asc');
+  it('goodness words follow a higher-is-better metric (best/fastest → desc)', () => {
+    expect(directionFor('fastest', { preferredDirection: 'higher' })).toBe('desc');
+    expect(directionFor('best', { preferredDirection: 'higher' })).toBe('desc');
+    expect(directionFor('worst', { preferredDirection: 'higher' })).toBe('asc');
+    expect(directionFor('slowest', { preferredDirection: 'higher' })).toBe('asc');
   });
-  it('time-like metric: fastest is asc (smallest time)', () => {
-    expect(directionFor('fastest', 'lap time')).toBe('asc');
-    expect(directionFor('slowest', 'duration')).toBe('desc');
+  it('goodness words follow a lower-is-better metric (best/fastest → asc)', () => {
+    expect(directionFor('fastest', { preferredDirection: 'lower' })).toBe('asc');
+    expect(directionFor('best', { preferredDirection: 'lower' })).toBe('asc');
+    expect(directionFor('worst', { preferredDirection: 'lower' })).toBe('desc');
   });
-  it('falls back to the time-like default when the metric is unclassified', () => {
-    expect(directionFor('fastest', 'driver')).toBe('asc');
+  it('falls back to the generic default when no direction is declared', () => {
+    expect(directionFor('fastest')).toBe('asc');
+    expect(directionFor('best')).toBe('desc');
   });
 });

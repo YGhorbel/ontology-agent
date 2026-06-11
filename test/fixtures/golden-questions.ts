@@ -40,12 +40,21 @@ const fact = (table: string, column: string, o: Partial<ColumnFact> = {}): Colum
   sampleValues: [],
   ...o,
 });
-const metric = (table: string, column: string, prefLabel: string, altLabel: string[] = []): Capability => ({
+const metric = (
+  table: string,
+  column: string,
+  prefLabel: string,
+  altLabel: string[] = [],
+  formulaHint?: string,
+  preferredDirection?: 'higher' | 'lower',
+): Capability => ({
   kind: 'metric',
   scope: { class: classIri(table), property: column },
   prefLabel,
   altLabel,
   provenance: 'llm',
+  ...(formulaHint ? { formulaHint } : {}),
+  ...(preferredDirection ? { preferredDirection } : {}),
 });
 const dimension = (table: string, column: string, prefLabel: string, altLabel: string[] = []): Capability => ({
   kind: 'dimension',
@@ -91,6 +100,7 @@ function buildF1(): OntologyIndex {
     prop('drivers', 'driverref', 'Driver reference', ['ref', 'driver slug']),
     prop('results', 'points', 'Points', ['race points']),
     prop('results', 'fastestlapspeed', 'Fastest lap speed', ['top speed']),
+    prop('results', 'milliseconds', 'Lap time', ['race time']),
     prop('results', 'position', 'Finishing position', ['Finish position']),
     prop('results', 'constructorid', 'Constructor', []),
     prop('results', 'driverid', 'Driver', []),
@@ -108,6 +118,7 @@ function buildF1(): OntologyIndex {
   const facts: ColumnFact[] = [
     fact('results', 'points', { dataType: 'integer' }),
     fact('results', 'fastestlapspeed', { dataType: 'numeric' }),
+    fact('results', 'milliseconds', { dataType: 'bigint' }),
     fact('results', 'position', { dataType: 'bigint' }),
     fact('driverstandings', 'position', { dataType: 'bigint' }),
     fact('constructors', 'constructorid', { dataType: 'bigint', isPrimaryKey: true, isUnique: true }),
@@ -120,9 +131,10 @@ function buildF1(): OntologyIndex {
     fact('drivers', 'driverref', { dataType: 'text' }),
   ];
   const caps: Capability[] = [
-    metric('results', 'points', 'points', ['race points', 'scoring points']),
-    metric('results', 'fastestlapspeed', 'fastest lap speed', ['top speed']),
-    metric('races', 'raceid', 'number of races', ['race count']),
+    metric('results', 'points', 'points', ['race points', 'scoring points'], 'SUM(results.points)', 'higher'),
+    metric('results', 'fastestlapspeed', 'fastest lap speed', ['top speed'], 'AVG(CAST(results.fastestlapspeed AS REAL))', 'higher'),
+    metric('results', 'milliseconds', 'lap time', ['race time'], 'AVG(results.milliseconds)', 'lower'),
+    metric('races', 'raceid', 'number of races', ['race count'], 'COUNT(races.raceid)', 'higher'),
     factTable('results', 'Race results (fact table)'),
     dimension('drivers', 'driverid', 'Driver', ['racer']),
     dimension('constructors', 'constructorid', 'Constructor', ['team']),
@@ -162,8 +174,8 @@ function buildEcommerce(): OntologyIndex {
     fact('line_items', 'quantity', { dataType: 'integer' }),
   ];
   const caps: Capability[] = [
-    metric('orders', 'total_amount', 'revenue', ['turnover', 'sales', 'top-line']),
-    metric('orders', 'id', 'order count', ['number of orders']),
+    metric('orders', 'total_amount', 'revenue', ['turnover', 'sales', 'top-line'], 'SUM(orders.total_amount)', 'higher'),
+    metric('orders', 'id', 'order count', ['number of orders'], 'COUNT(orders.id)', 'higher'),
     factTable('orders', 'Order (fact table)'),
     dimension('customers', 'id', 'Customer (dimension)', ['clients']),
   ];

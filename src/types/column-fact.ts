@@ -26,5 +26,23 @@ export const ColumnFactSchema = z.object({
   nullable: z.boolean(),
   /** A small value dictionary for low-cardinality columns; empty for high-cardinality / ID columns. */
   sampleValues: z.array(z.string()).default([]),
+
+  // --- Profiling statistics (optional; populated from the Step-1 ColumnProfile) ---
+  /** Total rows in the table at profiling time. */
+  numRows: z.number().int().nonnegative().optional(),
+  /** Number of NULLs observed in this column. */
+  nullCount: z.number().int().nonnegative().optional(),
+  /** Min value as text (null when not measured). */
+  min: z.string().nullable().optional(),
+  /** Max value as text (null when not measured). */
+  max: z.string().nullable().optional(),
+  /** A sentinel value (e.g. '-', 'N/A', '') detected in samples that means unknown/missing. */
+  nullPlaceholder: z.string().optional(),
+
+  // --- Temporality (Fix 3; set by the monotonicity probe in node 1b) ---
+  /** Cumulative running-total measure → SUM double-counts; use MAX / last-value-per-group. */
+  temporality: z.enum(['cumulative-snapshot']).optional(),
+  /** String evidence: partition/order columns + observed monotonic ratio. */
+  temporalityEvidence: z.string().optional(),
 });
 export type ColumnFact = z.infer<typeof ColumnFactSchema>;

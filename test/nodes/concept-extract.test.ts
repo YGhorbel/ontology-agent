@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createConceptExtractNode } from '../../src/agent/nodes/02-concept-extract.js';
+import { buildConceptExtractPrompt } from '../../src/prompts/concept-extract.js';
 import { makeFakeLlm } from '../../src/llm/structured-llm.js';
 import { ecommerceSchema, makeGoldenLlm } from '../fixtures.js';
 import type { OntologyState } from '../../src/agent/state.js';
 import type { ValidationError } from '../../src/types/ontology.js';
+import type { ColumnFact } from '../../src/types/column-fact.js';
 
 describe('createConceptExtractNode', () => {
   it('emits one Class + one DatatypeProperty per column for every table', async () => {
@@ -50,5 +52,31 @@ describe('createConceptExtractNode', () => {
     const node = createConceptExtractNode(makeGoldenLlm());
     const update = await node({ canonicalSchema: ecommerceSchema, validationErrors: null, retryCount: 0 } as OntologyState);
     expect(update.retryCount).toBeUndefined();
+  });
+
+  it('Fix 1: grounds the prompt in profile facts and injects prior errors on retry', async () => {
+    const table = ecommerceSchema.tables.find((t) => t.name === 'orders')!;
+    const facts: ColumnFact[] = [
+      {
+        table: 'orders',
+        column: 'status',
+        dataType: 'text',
+        isNumericText: false,
+        isUnique: false,
+        isPrimaryKey: false,
+        distinctCount: 2,
+        nullable: false,
+        sampleValues: ['completed', 'cancelled'],
+        nullPlaceholder: undefined,
+      },
+    ];
+    const prompt = await buildConceptExtractPrompt(
+      table,
+      ecommerceSchema.foreignKeys,
+      ["[comment-cites-known-values] qsl:property/orders/status: cites 'Foo'"],
+      facts,
+    );
+    expect(prompt).toContain("samples: 'completed', 'cancelled'");
+    expect(prompt).toContain("cites 'Foo'");
   });
 });

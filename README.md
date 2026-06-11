@@ -15,22 +15,32 @@ I/O, no Qwery-specific assumptions.
 ## The agent (LangGraph state machine, 5 nodes)
 
 ```
-START → schema-ingest → concept-extract → relationship-link → capability-infer → validate
-                              ▲                                                        │
-                              └──────────── retry (retryCount < 2 & errors) ───────────┤
-                                                                                    END
+START → schema-ingest → (profile) → concept-extract → relationship-link → capability-infer → validate
+                                          ▲ concept errors                          capability errors │
+                                          └──────── retry (retryCount < 2 & errors) ─────────────────┤
+                                                                                                   END
 ```
 
 | # | Node | Kind | Responsibility |
 |---|------|------|----------------|
 | 1 | `schema-ingest` | deterministic | Read `information_schema`/`pg_description` (READ ONLY) → engine-agnostic `CanonicalSchema` (tables, columns, FKs, ≤5 sample rows, numeric stats). |
-| 2 | `concept-extract` | LLM | Per table: OWL class + per-column property, each with SKOS `prefLabel`/`altLabel`. |
+| 1b | `relationship-discover` | deterministic | Profiling: FK discovery, column facts, and **cumulative-measure detection** (tags running-total columns `cumulative-snapshot`). Runs once, outside the retry loop. |
+| 2 | `concept-extract` | LLM | Per table: OWL class + per-column property, each with SKOS `prefLabel`/`altLabel`. Prompt is **grounded in profile facts** (distinct counts, ranges, sample values) so comments can't cite invented values. |
 | 3 | `relationship-link` | deterministic | Each FK → an `objectProperty` relationship (predicate from the FK column). |
-| 4 | `capability-infer` | LLM + fallback | Metrics / time grains / fact tables / dimensions. A deterministic safety net synthesizes the `revenue` metric if the LLM misses it. |
-| 5 | `validate` | deterministic | Assemble JSON-LD, run 4 structural rules; on failure (retries left) loop back to node 2 with the errors in context. |
+| 4 | `capability-infer` | LLM + fallback | Metrics / time grains / fact tables / dimensions. A deterministic safety net synthesizes the `revenue` metric if the LLM misses it. Told which columns are cumulative so it never SUMs them. |
+| 5 | `validate` | deterministic + dry-run | Assemble JSON-LD; run structural + comment-grounding + formula (parse/bind/dry-run/type) + cumulative-SUM checks. Errors route back to node 2 (concept) or node 4 (capability), ≤2 retries. The optional formula dry-run is the one read-only DB touch. |
 
 The LLM is reached only through a narrow injected port (`StructuredLlm`), so the
 whole pipeline runs deterministically in tests with **no API key**.
+
+### Tuning knobs (env)
+
+All optional, with documented defaults — see [docs/ontology-build.md §7](docs/ontology-build.md) for the
+full table. Profiling/recovery: `ONTOLOGY_IND_MIN_CONTAINMENT` (0.7), `ONTOLOGY_NAME_MATCH_MIN` (1.0),
+`ONTOLOGY_NAME_ONLY_CONFIDENCE` (0.65), `ONTOLOGY_FK_MIN_SCORE` (0). Concept grounding (Fix 1):
+`ONTOLOGY_ENUM_MAX_DISTINCT` (50), `ONTOLOGY_PROMPT_SAMPLE_VALUES` (15). Formula validation (Fix 2):
+`ONTOLOGY_VALIDATE_DRY_RUN` (true), `ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS` (5000). Cumulative measures
+(Fix 3): `ONTOLOGY_MONOTONIC_MIN_RATIO` (0.99).
 
 ## Prerequisites
 

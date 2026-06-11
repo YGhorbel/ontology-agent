@@ -69,6 +69,9 @@ function datatypePropertyNode(c: ConceptCandidate, fact: ColumnFact | undefined)
           ...(fact.isUnique ? { 'qsl:isUnique': true } : {}),
           ...(fact.distinctCount !== null ? { 'qsl:distinctCount': fact.distinctCount } : {}),
           ...(fact.sampleValues.length > 0 ? { 'qsl:sampleValues': fact.sampleValues } : {}),
+          ...(fact.nullPlaceholder !== undefined ? { 'qsl:nullPlaceholder': fact.nullPlaceholder } : {}),
+          ...(fact.temporality ? { 'qsl:temporality': fact.temporality } : {}),
+          ...(fact.temporalityEvidence ? { 'qsl:temporalityEvidence': fact.temporalityEvidence } : {}),
         }
       : {}),
   };
@@ -107,6 +110,7 @@ function capabilityNode(cap: Capability, index: number, uniqueId: (base: string)
     ...(cap.altLabel && cap.altLabel.length > 0 ? { 'skos:altLabel': cap.altLabel } : {}),
     ...(cap.formulaHint ? { 'qsl:formulaHint': cap.formulaHint } : {}),
     ...(cap.unit ? { 'qsl:unit': cap.unit } : {}),
+    ...(cap.preferredDirection ? { 'qsl:preferredDirection': cap.preferredDirection } : {}),
     'qsl:provenance': cap.provenance,
   };
 }

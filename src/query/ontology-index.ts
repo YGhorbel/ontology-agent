@@ -41,6 +41,8 @@ export interface CapabilityInfo {
   prefLabel?: string;
   /** Synonyms for schema linking (skos:altLabel). Empty when none declared. */
   altLabel: string[];
+  /** For a metric: whether a larger value is the better/more-extreme one (ranking polarity). */
+  preferredDirection?: 'higher' | 'lower';
 }
 export interface OntologyIndex {
   classes: Map<string, ClassInfo>;
@@ -117,6 +119,7 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
           unit: n['qsl:unit'],
           prefLabel: n['skos:prefLabel'],
           altLabel: n['skos:altLabel'] ?? [],
+          ...(n['qsl:preferredDirection'] !== undefined ? { preferredDirection: n['qsl:preferredDirection'] } : {}),
         });
         break;
       }

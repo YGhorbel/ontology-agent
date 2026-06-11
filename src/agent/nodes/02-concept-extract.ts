@@ -12,6 +12,7 @@ import { z } from 'zod';
 import type { StructuredLlm } from '../../llm/structured-llm.js';
 import { CONCEPT_EXTRACT_SYSTEM, buildConceptExtractPrompt } from '../../prompts/concept-extract.js';
 import type { CanonicalSchema, Table } from '../../types/canonical-schema.js';
+import type { ColumnFact } from '../../types/column-fact.js';
 import { type ConceptCandidate } from '../../types/ontology.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
@@ -74,9 +75,23 @@ export function createConceptExtractNode(llm: StructuredLlm) {
 
     const priorErrors = (state.validationErrors ?? []).map((e) => `[${e.rule}] ${e.subject}: ${e.message}`);
 
+    // Group the profiling facts by table so each prompt is grounded in real data
+    // (distinct counts, ranges, sample values) — the antidote to hallucinated examples.
+    const factsByTable = new Map<string, ColumnFact[]>();
+    for (const f of state.columnFacts ?? []) {
+      const list = factsByTable.get(f.table) ?? [];
+      list.push(f);
+      factsByTable.set(f.table, list);
+    }
+
     const candidates: ConceptCandidate[] = [];
     for (const table of schema.tables) {
-      const user = await buildConceptExtractPrompt(table, schema.foreignKeys, priorErrors);
+      const user = await buildConceptExtractPrompt(
+        table,
+        schema.foreignKeys,
+        priorErrors,
+        factsByTable.get(table.name) ?? [],
+      );
       const extracted = await llm.generate(TableConceptsSchema, CONCEPT_EXTRACT_SYSTEM, user);
       candidates.push(...mapTableToConcepts(table, extracted));
     }

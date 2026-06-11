@@ -16,6 +16,7 @@
  * (run `pnpm generate --dsn <dsn>` first if none exists). The DB is soft-pinged so
  * a bad connection string is reported, but a live DB is not required to link/plan.
  */
+import 'dotenv/config'; // load .env so --llm can read AZURE_OPENAI_*/OPENAI_API_KEY
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as readline from 'node:readline';
@@ -25,6 +26,11 @@ import { buildOntologyIndex, type OntologyIndex } from '../query/ontology-index.
 import { buildJoinGraph, resolveJoinPath, resolveAllPaths } from '../query/join-graph.js';
 import { linkQuestion } from '../query/schema-linker.js';
 import { parseEvidence } from '../query/evidence.js';
+import { intentToSql, onSql } from '../query/intent-to-sql.js';
+import { generateSqlWithLlm } from '../query/llm-sql.js';
+import { resolveIntent, pickHint, type Clarification } from '../query/llm-intent.js';
+import { makeRealLlm } from '../llm/client.js';
+import type { StructuredLlm } from '../llm/structured-llm.js';
 import type { LinkHints, QueryIntent } from '../types/query-intent.js';
 
 function parseFlag(flag: string): string | undefined {
@@ -93,10 +99,7 @@ async function pingDb(dsn: string): Promise<string> {
   }
 }
 
-const onSql = (c: { on: Array<{ left: string; right: string }> }): string =>
-  c.on.map((p) => `${p.left} = ${p.right}`).join(' AND ');
-
-function printIntent(intent: QueryIntent, index: OntologyIndex): void {
+function printIntent(intent: QueryIntent, index: OntologyIndex, opts: { source?: 'deterministic' | 'llm'; warnings?: string[] } = {}): void {
   const dim = (s: string): string => `\x1b[2m${s}\x1b[0m`;
   const measures = intent.measures.map((m) => `${m.table}.${m.column}${m.capability ? ` (${m.capability})` : ''}`);
   const filters = intent.filters.map((f) => `${f.table}.${f.column} ${f.op} ${f.value}${f.matchedSample ? ' [value-dict]' : ''}`);
@@ -105,7 +108,9 @@ function printIntent(intent: QueryIntent, index: OntologyIndex): void {
   const projection = intent.projection.map((p) => `${p.table}.${p.column}`);
   const order = intent.orderBy.map((o) => `${o.table}.${o.column} ${o.dir}`);
 
-  console.log(dim('\n── intent ──────────────────────────────────'));
+  const tag = opts.source ? dim(` [${opts.source}]`) : '';
+  console.log(dim('\n── intent ──────────────────────────────────') + tag);
+  for (const w of opts.warnings ?? []) console.log(dim(`  ! ${w}`));
   console.log(`  tables   : ${intent.tables.join(', ') || dim('(none)')}`);
   console.log(`  select   : ${projection.join(', ') || dim('-')}`);
   console.log(`  measures : ${measures.join(', ') || dim('-')}`);
@@ -123,26 +128,33 @@ function printIntent(intent: QueryIntent, index: OntologyIndex): void {
     console.log(`  \x1b[33m⚠ unresolved\x1b[0m : ${intent.unresolved.join(', ')}`);
   }
 
-  // Join plan for the linked tables (the seam into the resolver).
-  if (intent.tables.length >= 2) {
+  // Join plan + SQL for the linked tables (the seam into the resolver, then synthesis).
+  if (intent.tables.length >= 1) {
     const graph = buildJoinGraph(index.joinEdges);
     const factTables = index.capabilities.filter((c) => c.kind === 'factTable').map((c) => c.scopeTable);
     const plan = resolveJoinPath(graph, intent.tables, { factTables });
+
     console.log(dim('── join plan ───────────────────────────────'));
-    if (plan.lowConfidence) console.log('  \x1b[33m[best-effort: low-confidence edge]\x1b[0m');
-    console.log(`  FROM ${plan.anchorTable}`);
-    for (const c of plan.clauses) {
-      const fan = c.multiplies ? ' \x1b[33m[fan-out]\x1b[0m' : '';
-      console.log(`  JOIN ${c.joinTable} ON ${onSql(c)}   ${dim(`-- ${c.cardinality}, ${c.provenance} ${c.confidence.toFixed(2)}`)}${fan}`);
+    if (intent.tables.length === 1) {
+      console.log(`  FROM ${intent.tables[0]}   ${dim('(single table, no join)')}`);
+    } else {
+      if (plan.lowConfidence) console.log('  \x1b[33m[best-effort: low-confidence edge]\x1b[0m');
+      console.log(`  FROM ${plan.anchorTable}`);
+      for (const c of plan.clauses) {
+        const fan = c.multiplies ? ' \x1b[33m[fan-out]\x1b[0m' : '';
+        console.log(`  JOIN ${c.joinTable} ON ${onSql(c)}   ${dim(`-- ${c.cardinality}, ${c.provenance} ${c.confidence.toFixed(2)}`)}${fan}`);
+      }
+      if (plan.unreachable.length > 0) console.log(`  \x1b[31m[!] unreachable: ${plan.unreachable.join(', ')}\x1b[0m`);
+      if (intent.tables.length === 2) {
+        const cands = resolveAllPaths(graph, intent.tables, { factTables, k: 5 });
+        if (cands.length > 1) console.log(dim(`  (${cands.length} alternative join paths — '\\paths' to list)`));
+      }
     }
-    if (plan.unreachable.length > 0) console.log(`  \x1b[31m[!] unreachable: ${plan.unreachable.join(', ')}\x1b[0m`);
-    if (intent.tables.length === 2) {
-      const cands = resolveAllPaths(graph, intent.tables, { factTables, k: 5 });
-      if (cands.length > 1) console.log(dim(`  (${cands.length} alternative join paths — '\\paths' to list)`));
-    }
-  } else if (intent.tables.length === 1) {
-    console.log(dim('── join plan ───────────────────────────────'));
-    console.log(`  FROM ${intent.tables[0]}   ${dim('(single table, no join)')}`);
+
+    const { sql, warnings } = intentToSql(intent, plan, index);
+    console.log(dim('── sql ─────────────────────────────────────'));
+    console.log(sql.split('\n').map((l) => `  ${l}`).join('\n'));
+    for (const w of warnings) console.log(dim(`  -- note: ${w}`));
   }
   console.log('');
 }
@@ -163,6 +175,27 @@ function printPaths(intent: QueryIntent, index: OntologyIndex): void {
   console.log('');
 }
 
+function printClarification(c: Clarification): void {
+  const opts = c.options.map((o, i) => `${i + 1}) ${o.table}${o.column ? `.${o.column}` : ''}`).join('   ');
+  console.log(`\x1b[33m  ⚠ clarify\x1b[0m ${c.question}`);
+  console.log(`    ${opts}`);
+  console.log('    reply: \\pick <n>\n');
+}
+
+async function printLlmSql(question: string, index: OntologyIndex, llm: StructuredLlm): Promise<void> {
+  const dim = (s: string): string => `\x1b[2m${s}\x1b[0m`;
+  try {
+    const out = await generateSqlWithLlm(question, index, llm);
+    console.log(dim('── sql (llm) ───────────────────────────────'));
+    console.log(dim(`  grounding: ${out.stats.sliceTokens} tok (-${out.stats.reductionPct}% vs full ${out.stats.fullTokens})`));
+    console.log(out.sql.split('\n').map((l) => `  ${l}`).join('\n'));
+    console.log(dim(`  -- ${out.rationale}`));
+    console.log('');
+  } catch (err) {
+    console.log(`  \x1b[31m[llm] ${err instanceof Error ? err.message.split('\n')[0] : String(err)}\x1b[0m\n`);
+  }
+}
+
 const HELP = `
   Type a natural-language question, e.g.:
     total points for British constructors
@@ -172,6 +205,8 @@ const HELP = `
     \\tables           list the ontology's tables
     \\paths            show alternative join paths for the last question
     \\evidence <text>  apply BIRD-style hints ("X refers to Y; … MAX(col)…"); \\evidence alone clears
+    \\pick <n>         answer a clarification (disambiguate the flagged span)
+    \\llm [question]   grounded LLM SQL fallback (needs --llm at startup); no arg re-runs the last question
     \\help             this help
     \\q, exit          quit
 `;
@@ -205,59 +240,115 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Grounded LLM tier (opt-in): only built when --llm is passed, so the default
+  // experience needs no API key. Construction is lazy-safe; failures surface on use.
+  const llmEnabled = process.argv.slice(2).includes('--llm');
+  let llm: StructuredLlm | null = null;
+  if (llmEnabled) {
+    try {
+      llm = makeRealLlm();
+    } catch (err) {
+      console.error(`  [llm] could not initialise: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // --verbose narrates the retrieve → llm → validate steps of intent resolution.
+  const verbose = process.argv.slice(2).includes('--verbose');
+  const log = verbose ? (m: string): void => console.log(`\x1b[2m  [intent] ${m}\x1b[0m`) : undefined;
+
   const status = await pingDb(dsn);
   console.log(`\nqwery — datasource "${datasourceId}"`);
   console.log(`  db       : ${status}`);
   console.log(`  ontology : ${ontologyPath.split('/').pop()} (${index.classes.size} tables, ${index.joinEdges.length} join edges)`);
+  console.log(`  llm      : ${llm ? 'enabled (intent tier auto on weak intent; \\llm = SQL fallback)' : 'disabled (start with --llm to enable)'}`);
   console.log(HELP);
 
   let last: QueryIntent | null = null;
+  let lastQuestion = '';
   let hints: LinkHints | undefined;
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: 'qwery> ' });
+  // A pending clarification (LLM flagged an ambiguous span) awaiting a `\pick <n>`.
+  let pending: { question: string; clarification: Clarification } | null = null;
+  // Surface active evidence in the prompt so persistent hints can't silently skew a
+  // later question (the phantom-ORDER-BY foot-gun).
+  const promptStr = (): string => (hints ? 'qwery(ev)> ' : 'qwery> ');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: promptStr() });
+
+  // Resolve the intent (deterministic linker, falling through to the grounded LLM tier
+  // when weak), render its SQL, and surface any clarification the LLM raised.
+  const ask = async (question: string): Promise<void> => {
+    const r = await resolveIntent(question, index, { ...(llm ? { llm } : {}), ...(hints ? { hints } : {}), ...(log ? { log } : {}) });
+    last = r.intent;
+    lastQuestion = question;
+    printIntent(last, index, { source: r.source, ...(r.warnings ? { warnings: r.warnings } : {}) });
+    if (r.error) console.log(`  \x1b[31m[llm] ${r.error}\x1b[0m`);
+    pending = r.clarification ? { question, clarification: r.clarification } : null;
+    if (r.clarification) printClarification(r.clarification);
+    hints = undefined; // evidence is one-shot — never silently persist into the next question
+  };
+
+  // Resolve a pending clarification: bind the chosen element as an alias hint and re-ask.
+  const doPick = async (n: number): Promise<void> => {
+    if (!pending) { console.log('  (nothing to disambiguate)\n'); return; }
+    const opts = pending.clarification.options;
+    if (!Number.isInteger(n) || n < 1 || n > opts.length) { console.log(`  (pick 1..${opts.length})\n`); return; }
+    const ref = opts[n - 1]!;
+    const q = pending.question;
+    hints = pickHint(pending.clarification.span, ref);
+    pending = null;
+    await ask(q);
+  };
+
   rl.prompt();
   rl.on('line', (raw) => {
-    const line = raw.trim();
-    if (line === '') {
-      rl.prompt();
-      return;
-    }
-    if (line === '\\q' || line === 'exit' || line === 'quit' || line === '\\quit') {
-      rl.close();
-      return;
-    }
-    // Inline evidence: "<question> \evidence <hints>" — apply the hints to this question
-    // (and keep them for the session), matching the natural "ask + hint on one line" form.
-    const inlineEv = line.indexOf('\\evidence ');
-    if (inlineEv > 0) {
-      const qPart = line.slice(0, inlineEv).trim();
-      hints = parseEvidence(line.slice(inlineEv + '\\evidence '.length), index).hints;
-      if (qPart) {
-        last = linkQuestion(qPart, index, { hints });
-        printIntent(last, index);
+    void (async () => {
+      const line = raw.trim();
+      if (line === '') { rl.prompt(); return; }
+      if (line === '\\q' || line === 'exit' || line === 'quit' || line === '\\quit') { rl.close(); return; }
+
+      // Inline evidence: "<question> \evidence <hints>" — apply the hints to this question.
+      const inlineEv = line.indexOf('\\evidence ');
+      if (inlineEv > 0) {
+        const qPart = line.slice(0, inlineEv).trim();
+        hints = parseEvidence(line.slice(inlineEv + '\\evidence '.length), index).hints;
+        if (qPart) await ask(qPart);
+        rl.setPrompt(promptStr());
+        rl.prompt();
+        return;
       }
+
+      if (pending && /^\d+$/.test(line)) {
+        await doPick(Number(line));
+      } else if (line === '\\pick' || line.startsWith('\\pick ')) {
+        await doPick(Number(line.slice('\\pick'.length).trim()));
+      } else if (line === '\\help' || line === 'help') {
+        console.log(HELP);
+      } else if (line === '\\tables') {
+        console.log(`  ${[...index.classes.keys()].sort().join(', ')}\n`);
+      } else if (line === '\\paths') {
+        if (last) printPaths(last, index);
+        else console.log('  (ask a question first)\n');
+      } else if (line === '\\llm' || line.startsWith('\\llm ')) {
+        const q = line === '\\llm' ? lastQuestion : line.slice('\\llm '.length).trim();
+        if (!llm) console.log('  (start qwery with --llm, and set OPENAI_API_KEY / Azure env)\n');
+        else if (!q) console.log('  (ask a question first)\n');
+        else {
+          if (line !== '\\llm') { last = linkQuestion(q, index, hints ? { hints } : {}); lastQuestion = q; printIntent(last, index); }
+          await printLlmSql(q, index, llm);
+        }
+      } else if (line === '\\evidence') {
+        hints = undefined;
+        console.log('  evidence cleared\n');
+      } else if (line.startsWith('\\evidence ')) {
+        const parsed = parseEvidence(line.slice('\\evidence '.length), index);
+        hints = parsed.hints;
+        const n = hints.aliases.length + hints.values.length + hints.orderBy.length + (hints.limit != null ? 1 : 0);
+        console.log(`  evidence applied: ${n} hint(s)${parsed.dropped.length ? `, ${parsed.dropped.length} clause(s) unparsed` : ''}\n`);
+      } else {
+        await ask(line);
+      }
+      rl.setPrompt(promptStr());
       rl.prompt();
-      return;
-    }
-    if (line === '\\help' || line === 'help') {
-      console.log(HELP);
-    } else if (line === '\\tables') {
-      console.log(`  ${[...index.classes.keys()].sort().join(', ')}\n`);
-    } else if (line === '\\paths') {
-      if (last) printPaths(last, index);
-      else console.log('  (ask a question first)\n');
-    } else if (line === '\\evidence') {
-      hints = undefined;
-      console.log('  evidence cleared\n');
-    } else if (line.startsWith('\\evidence ')) {
-      const parsed = parseEvidence(line.slice('\\evidence '.length), index);
-      hints = parsed.hints;
-      const n = hints.aliases.length + hints.values.length + hints.orderBy.length + (hints.limit != null ? 1 : 0);
-      console.log(`  evidence applied: ${n} hint(s)${parsed.dropped.length ? `, ${parsed.dropped.length} clause(s) unparsed` : ''}\n`);
-    } else {
-      last = linkQuestion(line, index, hints ? { hints } : {});
-      printIntent(last, index);
-    }
-    rl.prompt();
+    })();
   });
   rl.on('close', () => {
     console.log('bye');

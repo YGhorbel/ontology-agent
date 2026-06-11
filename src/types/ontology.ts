@@ -69,6 +69,10 @@ export const CapabilitySchema = z.object({
   altLabel: z.array(z.string()).optional(),
   formulaHint: z.string().optional(),
   unit: z.string().optional(),
+  /** For a metric: whether a larger value is the better/more-extreme one — the domain
+   * polarity behind "best/worst/fastest/slowest". Declared by the LLM so ranking
+   * direction is ontology data, not a hardcoded keyword guess. */
+  preferredDirection: z.enum(['higher', 'lower']).optional(),
   /** Auditable origin: LLM-inferred vs deterministic safety-net. */
   provenance: z.enum(['llm', 'deterministic-fallback']).default('llm'),
 });
@@ -114,6 +118,12 @@ const DatatypePropertyNodeSchema = z.object({
   'qsl:isUnique': z.boolean().optional(),
   'qsl:distinctCount': z.number().int().nonnegative().optional(),
   'qsl:sampleValues': z.array(z.string()).optional(),
+  /** A sentinel value (e.g. '-', 'N/A', '') used in the data to mean unknown/missing. */
+  'qsl:nullPlaceholder': z.string().optional(),
+  /** Marks a measure whose values are cumulative running totals (SUM double-counts; use MAX/last-per-group). */
+  'qsl:temporality': z.enum(['cumulative-snapshot']).optional(),
+  /** String evidence for the temporality tag: partition/order columns + observed monotonic ratio. */
+  'qsl:temporalityEvidence': z.string().optional(),
 });
 
 const ObjectPropertyNodeSchema = z.object({
@@ -140,6 +150,7 @@ const CapabilityNodeSchema = z.object({
   'skos:altLabel': z.array(z.string()).optional(),
   'qsl:formulaHint': z.string().optional(),
   'qsl:unit': z.string().optional(),
+  'qsl:preferredDirection': z.enum(['higher', 'lower']).optional(),
   'qsl:provenance': z.enum(['llm', 'deterministic-fallback']),
 });
 
@@ -167,9 +178,24 @@ export const ValidationErrorSchema = z.object({
     'metric-formula-columns',
     'skos-preflabel-unique',
     'orphan-class',
+    // Fix 1 — a comment cited an example value not present in the column's samples.
+    'comment-cites-known-values',
+    // Fix 2 — formulaHint failed parse / bind / dry-run / type checks.
+    'formula-parse',
+    'formula-bind',
+    'formula-dry-run',
+    'formula-type',
+    // Fix 3 — SUM over a cumulative-snapshot measure (deterministic backstop).
+    'cumulative-no-sum',
   ]),
   message: z.string(),
   /** @id or label of the offending node. */
   subject: z.string(),
+  /**
+   * Which node should fix this on retry: `concept` (node 2, structural/labels/comments)
+   * or `capability` (node 4, metric formulas). Drives the ⑤→② vs ⑤→④ retry routing.
+   * Absent → treated as `concept`.
+   */
+  origin: z.enum(['concept', 'capability']).optional(),
 });
 export type ValidationError = z.infer<typeof ValidationErrorSchema>;

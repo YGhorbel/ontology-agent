@@ -45,19 +45,26 @@ START
   │
   ▼
 ② concept-extract ────────► classes + datatype props with SKOS labels          [LLM]
-  │
+  │                           (prompt grounded in profile facts + sample values)
   ▼
 ③ relationship-link ──────► merge declared FKs + discovered candidates          [no LLM]
   │                           → object properties (provenance, confidence, joinColumns)
   ▼
 ④ capability-infer ───────► capabilities (fact tables, measures, formula hints) [LLM]
-  │
+  │                       ◄─ retry ④ (capability errors, ≤2)
   ▼
-⑤ validate ───────────────► structural/zod checks ── errors? ──► retry ② (≤2)   [no LLM]
-  │                                                  └─ clean ──► END
+⑤ validate ──► structural + comment/formula/temporality checks ── errors? ──► retry (≤2)  [no LLM + dry-run DB]
+  │              ├─ concept errors  ──► retry ②
+  │              ├─ capability errors ─► retry ④
+  │              └─ clean ──► END
   ▼
 assemble + serialize ─────► JSON-LD `@graph` + Turtle
 ```
+
+Retry routing (Fix 2): node ⑤ tags each error with an `origin` — `concept` errors (structure,
+labels, comments) loop back to ②, purely `capability` errors (metric formulas) loop back to ④.
+The shared `retryCount` is still bounded at ≤2. Node ⑤ is the one place that touches the target
+DB, for the optional read-only **formula dry-run** (guarded by `ONTOLOGY_VALIDATE_DRY_RUN`).
 
 Key design points:
 
@@ -247,6 +254,11 @@ where a catalog-only approach would leave holes.
 | `ONTOLOGY_NAME_MATCH_MIN` | `1.0` | Min `nameSimilarity` to relax the prefilter / trigger name recovery |
 | `ONTOLOGY_NAME_ONLY_CONFIDENCE` | `0.65` | Confidence assigned to an `inferred-name` edge |
 | `ONTOLOGY_FK_MIN_SCORE` | `0` | Generation-time floor for keeping a discovered edge (0 = keep all; resolver tiers at query time) |
+| `ONTOLOGY_ENUM_MAX_DISTINCT` | `50` | Max distinct values for a column to count as a small enumeration (full `qsl:sampleValues` emitted; comments gated against its samples). Supersedes the legacy `ONTOLOGY_VALUE_DICT_MAX_DISTINCT`, which still wins when set. |
+| `ONTOLOGY_PROMPT_SAMPLE_VALUES` | `15` | Max sample values shown per enumerated column in the node ② prompt |
+| `ONTOLOGY_VALIDATE_DRY_RUN` | `true` | Whether node ⑤ executes a read-only `SELECT <formula>` dry-run per metric (`false` = parse/bind/type only) |
+| `ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS` | `5000` | `statement_timeout` for the formula dry-run and the monotonicity probe |
+| `ONTOLOGY_MONOTONIC_MIN_RATIO` | `0.99` | Min fraction of non-negative deltas for a measure to be tagged `cumulative-snapshot` |
 
 ---
 

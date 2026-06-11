@@ -148,4 +148,14 @@ describe('linkQuestion — assembler robustness (Sprint 3b)', () => {
     expect(intent.measures.map((m) => `${m.table}.${m.column}`)).toContain('orders.id');
     expect(intent.groupDims.map((g) => `${g.table}.${g.column}`)).toContain('orders.currency');
   });
+
+  it('ranks a higher-is-better metric DESC and a lower-is-better metric ASC (polarity from the ontology)', () => {
+    // Same word ("fastest"), opposite direction — decided by the metric's declared
+    // preferredDirection, not any hardcoded keyword. This is what makes it domain-general.
+    const speed = linkQuestion('the driver with the fastest lap speed', f1Index); // preferredDirection: higher
+    expect(speed.orderBy.map((o) => `${o.table}.${o.column} ${o.dir}`)).toContain('results.fastestlapspeed desc');
+
+    const time = linkQuestion('the driver with the best lap time', f1Index); // preferredDirection: lower
+    expect(time.orderBy.map((o) => `${o.table}.${o.column} ${o.dir}`)).toContain('results.milliseconds asc');
+  });
 });

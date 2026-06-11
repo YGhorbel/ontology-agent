@@ -33,12 +33,21 @@ const RELATIONSHIP_LINK = 'relationship-link';
 const CAPABILITY_INFER = 'capability-infer';
 const VALIDATE = 'validate';
 
-/** Route after validation: success or retries-exhausted -> END; otherwise loop back. */
-export function routeAfterValidate(state: OntologyState): typeof END | typeof CONCEPT_EXTRACT {
+/**
+ * Route after validation: success or retries-exhausted -> END; otherwise loop back.
+ *
+ * Concept-level errors (structure, labels, comments) route to node 2; purely
+ * capability-level errors (metric formulas) route to node 4. When both are present
+ * we fix concepts first — node 4 re-runs as part of that pass anyway.
+ */
+export function routeAfterValidate(
+  state: OntologyState,
+): typeof END | typeof CONCEPT_EXTRACT | typeof CAPABILITY_INFER {
   const errors = state.validationErrors ?? [];
   if (errors.length === 0) return END;
   if (state.retryCount >= 2) return END;
-  return CONCEPT_EXTRACT;
+  const anyConcept = errors.some((e) => e.origin !== 'capability');
+  return anyConcept ? CONCEPT_EXTRACT : CAPABILITY_INFER;
 }
 
 export function buildGraph(deps: BuildGraphDeps) {
@@ -49,14 +58,14 @@ export function buildGraph(deps: BuildGraphDeps) {
     .addNode(CONCEPT_EXTRACT, createConceptExtractNode(deps.llm))
     .addNode(RELATIONSHIP_LINK, createRelationshipLinkNode())
     .addNode(CAPABILITY_INFER, createCapabilityInferNode(deps.llm))
-    .addNode(VALIDATE, createValidateNode())
+    .addNode(VALIDATE, createValidateNode(connect))
     .addEdge(START, SCHEMA_INGEST)
     .addEdge(SCHEMA_INGEST, RELATIONSHIP_DISCOVER)
     .addEdge(RELATIONSHIP_DISCOVER, CONCEPT_EXTRACT)
     .addEdge(CONCEPT_EXTRACT, RELATIONSHIP_LINK)
     .addEdge(RELATIONSHIP_LINK, CAPABILITY_INFER)
     .addEdge(CAPABILITY_INFER, VALIDATE)
-    .addConditionalEdges(VALIDATE, routeAfterValidate, [CONCEPT_EXTRACT, END]);
+    .addConditionalEdges(VALIDATE, routeAfterValidate, [CONCEPT_EXTRACT, CAPABILITY_INFER, END]);
   return graph.compile();
 }
 

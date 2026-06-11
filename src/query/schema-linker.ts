@@ -136,6 +136,10 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
   // Foreign-key columns (the `from` side of each join edge) must never surface as a
   // projection or group-by column — they are join plumbing, not user-facing data.
   const fkCols = new Set(index.joinEdges.map((e) => `${e.fromTable}.${e.fromColumn}`));
+  // A metric's declared ranking polarity (ontology data) — drives sort direction for
+  // "best/worst/fastest/slowest" without any hardcoded domain keywords.
+  const prefDirOf = (table: string, column: string): 'higher' | 'lower' | undefined =>
+    index.capabilities.find((c) => c.kind === 'metric' && c.scopeTable === table && c.scopeColumn === column)?.preferredDirection;
 
   const covered = new Array<boolean>(nameToks.length).fill(false);
   const refAt = new Array<Accepted | null>(nameToks.length).fill(null);
@@ -241,7 +245,7 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
   const groupDims: QueryIntent['groupDims'] = [];
   // In ranking context a metric is the ORDER BY target, not an aggregate; collect
   // candidates here (with a label for metric-aware direction) instead of `measures`.
-  const rankCandidates: Array<{ table: string; column: string; label: string }> = [];
+  const rankCandidates: Array<{ table: string; column: string; preferredDirection?: 'higher' | 'lower' }> = [];
   const filterByCol = new Map<string, { table: string; column: string; values: string[]; matchedSample: boolean }>();
   const filterRefs = new Set<string>();
 
@@ -264,7 +268,8 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
       if (rankingContext) {
         // Rank by this metric (ORDER BY), don't aggregate it (no GROUP BY / measure).
         if (!rankCandidates.some((r) => r.table === cand.ref.table && r.column === col)) {
-          rankCandidates.push({ table: cand.ref.table, column: col, label: [...(target?.surfaces ?? []), col].join(' ') });
+          const pd = prefDirOf(cand.ref.table, col);
+          rankCandidates.push({ table: cand.ref.table, column: col, ...(pd ? { preferredDirection: pd } : {}) });
         }
       } else if (!measureKeys.has(k)) {
         measureKeys.add(k);
@@ -323,9 +328,11 @@ export function linkQuestion(question: string, index: OntologyIndex, opts: LinkO
       // Rank by the ranking-context metric if there is one, else by an aggregate;
       // direction is metric-aware for polarity-ambiguous words (fastest/slowest).
       const rank = rankCandidates[0]
-        ?? (measures[0] ? { table: measures[0].table, column: measures[0].column, label: measures[0].column } : null);
+        ?? (measures[0]
+          ? { table: measures[0].table, column: measures[0].column, preferredDirection: prefDirOf(measures[0].table, measures[0].column) }
+          : null);
       if (orderBy.length === 0 && rank) {
-        orderBy.push({ table: rank.table, column: rank.column, dir: directionFor(supTok, rank.label) });
+        orderBy.push({ table: rank.table, column: rank.column, dir: directionFor(supTok, { preferredDirection: rank.preferredDirection }) });
         tables.add(rank.table);
       }
       if (limit == null) {

@@ -147,33 +147,36 @@ export const isProjectionCue = (tok: string): boolean => PROJECTION_CUES.has(tok
 export const SUPERLATIVE_DIR = new Map<string, 'asc' | 'desc'>([
   ['most', 'desc'], ['highest', 'desc'], ['largest', 'desc'], ['greatest', 'desc'], ['maximum', 'desc'],
   ['max', 'desc'], ['top', 'desc'], ['slowest', 'desc'], ['longest', 'desc'], ['latest', 'desc'], ['oldest', 'desc'],
+  ['best', 'desc'],
   ['least', 'asc'], ['lowest', 'asc'], ['smallest', 'asc'], ['minimum', 'asc'], ['min', 'asc'],
   ['fastest', 'asc'], ['shortest', 'asc'], ['earliest', 'asc'], ['newest', 'asc'], ['bottom', 'asc'],
+  ['worst', 'asc'],
 ]);
 export const isSuperlative = (tok: string): boolean => SUPERLATIVE_DIR.has(tok);
 
 /**
- * Superlatives whose sort polarity depends on the metric, not the word: "fastest lap
- * *time*" wants the smallest value (asc) but "fastest lap *speed*" wants the largest
- * (desc). The `SUPERLATIVE_DIR` default reads them as time-like; `directionFor` flips
- * them when the ranking column reads as a speed/rate/score.
+ * "Goodness" superlatives whose sort polarity depends on the *metric*, not the word:
+ * "the **best/fastest**" means the preferred extreme and "the **worst/slowest**" the
+ * opposite — but which numeric end that is depends on whether higher is better. That
+ * polarity is domain knowledge, so it comes from the ontology (`preferredDirection`),
+ * never a hardcoded keyword list. Words that merely name the value end
+ * (`highest`/`lowest`/`most`/`least`/…) are unaffected and use `SUPERLATIVE_DIR`.
  */
-const POLARITY_AMBIGUOUS = new Set(['fastest', 'slowest']);
-/** Metric labels where a larger value is "more"/"faster" (higher = better). */
-const SPEED_LIKE = /\b(speed|rate|velocity|score|points?|throughput|frequency|kph|mph|rpm)\b/i;
-/** Metric labels where a smaller value is "less"/"faster" (lower = better). */
-const TIME_LIKE = /\b(time|times|duration|seconds?|minutes?|hours?|age|delay|latency|gap|interval)\b/i;
+const GOODNESS_WORDS = new Set(['fastest', 'slowest', 'best', 'worst']);
+/** The words that point at the *good* end (vs the bad end). */
+const PREFERRED_EXTREME = new Set(['fastest', 'best']);
 
 /**
- * Resolve a superlative word to a sort direction. Unambiguous words use
- * `SUPERLATIVE_DIR` verbatim; polarity-ambiguous words (`fastest`/`slowest`) are
- * decided by the ranking column's label — speed-like → larger is faster, time-like →
- * smaller is faster — falling back to the time-like default when neither matches.
+ * Resolve a superlative word to a sort direction. Goodness words are decided by the
+ * metric's declared `preferredDirection` (best/fastest = the preferred extreme,
+ * worst/slowest = the opposite); everything else uses `SUPERLATIVE_DIR`. With no
+ * declared direction, goodness words fall back to the generic `SUPERLATIVE_DIR` default.
  */
-export function directionFor(word: string, columnLabel = ''): 'asc' | 'desc' {
-  const base = SUPERLATIVE_DIR.get(word) ?? 'desc';
-  if (!POLARITY_AMBIGUOUS.has(word)) return base;
-  if (SPEED_LIKE.test(columnLabel)) return word === 'fastest' ? 'desc' : 'asc';
-  if (TIME_LIKE.test(columnLabel)) return word === 'fastest' ? 'asc' : 'desc';
-  return base;
+export function directionFor(word: string, opts: { preferredDirection?: 'higher' | 'lower' } = {}): 'asc' | 'desc' {
+  if (GOODNESS_WORDS.has(word) && opts.preferredDirection) {
+    const wantsTop = PREFERRED_EXTREME.has(word); // best/fastest → preferred end; worst/slowest → other end
+    const higherIsBetter = opts.preferredDirection === 'higher';
+    return wantsTop === higherIsBetter ? 'desc' : 'asc';
+  }
+  return SUPERLATIVE_DIR.get(word) ?? 'desc';
 }

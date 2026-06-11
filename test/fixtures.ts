@@ -128,11 +128,11 @@ const CONCEPTS: Record<string, unknown> = {
 /** Golden capability output. Deliberately OMITS revenue so the deterministic fallback fires. */
 const CAPABILITIES = {
   capabilities: [
-    { kind: 'metric', table: 'orders', column: null, prefLabel: 'order count', altLabels: ['number of orders'], formulaHint: 'COUNT(orders.id)', unit: 'count' },
-    { kind: 'metric', table: 'line_items', column: 'quantity', prefLabel: 'units sold', altLabels: ['quantity sold'], formulaHint: 'SUM(line_items.quantity)', unit: 'count' },
-    { kind: 'timeGrain', table: 'orders', column: 'placed_at', prefLabel: 'order date', altLabels: [], formulaHint: null, unit: null },
-    { kind: 'factTable', table: 'orders', column: null, prefLabel: null, altLabels: [], formulaHint: null, unit: null },
-    { kind: 'dimension', table: 'customers', column: null, prefLabel: null, altLabels: [], formulaHint: null, unit: null },
+    { kind: 'metric', table: 'orders', column: null, prefLabel: 'order count', altLabels: ['number of orders'], formulaHint: 'COUNT(orders.id)', unit: 'count', preferredDirection: 'higher' },
+    { kind: 'metric', table: 'line_items', column: 'quantity', prefLabel: 'units sold', altLabels: ['quantity sold'], formulaHint: 'SUM(line_items.quantity)', unit: 'count', preferredDirection: 'higher' },
+    { kind: 'timeGrain', table: 'orders', column: 'placed_at', prefLabel: 'order date', altLabels: [], formulaHint: null, unit: null, preferredDirection: null },
+    { kind: 'factTable', table: 'orders', column: null, prefLabel: null, altLabels: [], formulaHint: null, unit: null, preferredDirection: null },
+    { kind: 'dimension', table: 'customers', column: null, prefLabel: null, altLabels: [], formulaHint: null, unit: null, preferredDirection: null },
   ],
 };
 
@@ -143,6 +143,10 @@ const CAPABILITIES = {
 export function makeEcommerceQueryable(): Queryable {
   return {
     async query(text: string) {
+      // Fix 2 formula dry-run: bound the statement and report a numeric result type so
+      // the e2e ecommerce metrics validate cleanly (declared-only schema stays a no-op).
+      if (text.startsWith('SET LOCAL statement_timeout')) return { rows: [] };
+      if (text.includes('pg_typeof')) return { rows: [{ t: 'numeric' }] };
       if (text.includes('information_schema.tables')) {
         return { rows: ecommerceSchema.tables.map((t) => ({ table_name: t.name, table_comment: t.comment })) };
       }

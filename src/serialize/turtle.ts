@@ -64,6 +64,9 @@ function datatypeTurtle(n: Extract<GraphNode, { '@type': 'owl:DatatypeProperty' 
   if (n['qsl:isUnique']) preds.push('qsl:isUnique true');
   if (n['qsl:distinctCount'] !== undefined) preds.push(`qsl:distinctCount ${n['qsl:distinctCount']}`);
   if (n['qsl:sampleValues'] && n['qsl:sampleValues'].length > 0) preds.push(`qsl:sampleValues ${plainList(n['qsl:sampleValues'])}`);
+  if (n['qsl:nullPlaceholder'] !== undefined) preds.push(`qsl:nullPlaceholder ${lit(n['qsl:nullPlaceholder'])}`);
+  if (n['qsl:temporality'] !== undefined) preds.push(`qsl:temporality ${lit(n['qsl:temporality'])}`);
+  if (n['qsl:temporalityEvidence'] !== undefined) preds.push(`qsl:temporalityEvidence ${lit(n['qsl:temporalityEvidence'])}`);
   return `${ref(n['@id'])} a owl:DatatypeProperty ;\n    ${preds.join(' ;\n    ')} .`;
 }
 
@@ -90,6 +93,7 @@ function capabilityTurtle(n: Extract<GraphNode, { '@type': 'qsl:Capability' }>):
   if (n['skos:altLabel'] && n['skos:altLabel'].length > 0) parts.push(`    skos:altLabel ${langList(n['skos:altLabel'])} ;`);
   if (n['qsl:formulaHint']) parts.push(`    qsl:formulaHint ${lit(n['qsl:formulaHint'])} ;`);
   if (n['qsl:unit']) parts.push(`    qsl:unit ${lit(n['qsl:unit'])} ;`);
+  if (n['qsl:preferredDirection']) parts.push(`    qsl:preferredDirection ${lit(n['qsl:preferredDirection'])} ;`);
   parts.push(`    qsl:provenance ${lit(n['qsl:provenance'])} .`);
   return parts.join('\n');
 }
@@ -120,6 +124,7 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string
     'qsl:kind a owl:AnnotationProperty .',
     'qsl:formulaHint a owl:AnnotationProperty .',
     'qsl:unit a owl:AnnotationProperty .',
+    'qsl:preferredDirection a owl:AnnotationProperty .',
     'qsl:provenance a owl:AnnotationProperty .',
     'qsl:confidence a owl:AnnotationProperty .',
     'qsl:junctionTable a owl:AnnotationProperty .',
@@ -134,6 +139,9 @@ export function toTurtle(ontology: OntologyJsonLd, datasourceId: string): string
     'qsl:isUnique a owl:AnnotationProperty .',
     'qsl:distinctCount a owl:AnnotationProperty .',
     'qsl:sampleValues a owl:AnnotationProperty .',
+    'qsl:nullPlaceholder a owl:AnnotationProperty .',
+    'qsl:temporality a owl:AnnotationProperty .',
+    'qsl:temporalityEvidence a owl:AnnotationProperty .',
   ].join('\n');
 
   const order: GraphNode['@type'][] = ['owl:Class', 'owl:DatatypeProperty', 'owl:ObjectProperty', 'qsl:Capability'];

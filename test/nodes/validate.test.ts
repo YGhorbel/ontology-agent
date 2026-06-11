@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validateOntology, createValidateNode } from '../../src/agent/nodes/05-validate.js';
+import { routeAfterValidate } from '../../src/agent/graph.js';
 import { assembleOntology } from '../../src/agent/assemble.js';
 import { deriveRelationships } from '../../src/agent/nodes/03-relationship-link.js';
 import {
@@ -7,9 +8,25 @@ import {
   type Capability,
   type ConceptCandidate,
   type OntologyJsonLd,
+  type ValidationError,
 } from '../../src/types/ontology.js';
+import type { CanonicalSchema } from '../../src/types/canonical-schema.js';
+import type { ColumnFact } from '../../src/types/column-fact.js';
 import { ecommerceSchema } from '../fixtures.js';
 import type { OntologyState } from '../../src/agent/state.js';
+
+const fact = (table: string, column: string, o: Partial<ColumnFact> = {}): ColumnFact => ({
+  table,
+  column,
+  dataType: 'text',
+  isNumericText: false,
+  isUnique: false,
+  isPrimaryKey: false,
+  distinctCount: null,
+  nullable: false,
+  sampleValues: [],
+  ...o,
+});
 
 /** Minimal valid candidate set: one class + one property per table. */
 function baseCandidates(): ConceptCandidate[] {
@@ -101,6 +118,69 @@ describe('validateOntology', () => {
     const ontology = assembleOntology(cands, [], []);
     const errors = validateOntology(ontology, ecommerceSchema);
     expect(errors.some((e) => e.rule === 'orphan-class')).toBe(true);
+  });
+
+  it('Fix 1: flags a comment citing a value absent from the column samples', () => {
+    const cands: ConceptCandidate[] = [
+      { source: { table: 'customers' }, ontologyKind: 'Class', prefLabel: 'Customer', altLabel: [], rdfsLabel: 'Customer', rdfsComment: 'A customer.' },
+      { source: { table: 'customers', column: 'status' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Status', altLabel: [], rdfsLabel: 'Status', rdfsComment: "Lifecycle, e.g. 'Finished' or 'Retired'." },
+    ];
+    const facts = [fact('customers', 'status', { distinctCount: 2, sampleValues: ['active', 'churned'] })];
+    const ontology = assembleOntology(cands, [], [], facts);
+    const errors = validateOntology(ontology, ecommerceSchema, facts);
+    const e = errors.find((x) => x.rule === 'comment-cites-known-values');
+    expect(e).toBeTruthy();
+    expect(e?.message).toContain('Finished');
+    expect(e?.origin).toBe('concept');
+  });
+
+  it('Fix 1: allows a comment that only cites real sample values', () => {
+    const cands: ConceptCandidate[] = [
+      { source: { table: 'customers' }, ontologyKind: 'Class', prefLabel: 'Customer', altLabel: [], rdfsLabel: 'Customer', rdfsComment: 'A customer.' },
+      { source: { table: 'customers', column: 'status' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Status', altLabel: [], rdfsLabel: 'Status', rdfsComment: "Lifecycle, e.g. 'active'." },
+    ];
+    const facts = [fact('customers', 'status', { distinctCount: 2, sampleValues: ['active', 'churned'] })];
+    const ontology = assembleOntology(cands, [], [], facts);
+    expect(validateOntology(ontology, ecommerceSchema, facts).some((e) => e.rule === 'comment-cites-known-values')).toBe(false);
+  });
+
+  it('Fix 3: rejects a SUM over a cumulative-snapshot column', () => {
+    const f1: CanonicalSchema = {
+      datasourceId: 'f1',
+      tables: [
+        {
+          name: 'driverstandings',
+          comment: null,
+          columns: [
+            { name: 'driverstandingsid', type: 'bigint', nullable: false, default: null, comment: null, position: 1 },
+            { name: 'points', type: 'real', nullable: true, default: null, comment: null, position: 2 },
+          ],
+          sampleRows: [],
+          numericStats: [],
+        },
+      ],
+      foreignKeys: [],
+    };
+    const facts = [fact('driverstandings', 'points', { dataType: 'real', distinctCount: 50, temporality: 'cumulative-snapshot' })];
+    const cap: Capability = { kind: 'metric', scope: { class: classIri('driverstandings') }, prefLabel: 'championship points', altLabel: [], formulaHint: 'SUM(driverstandings.points)', provenance: 'llm' };
+    const ontology = assembleOntology([], [], [cap], facts);
+    const errors = validateOntology(ontology, f1, facts);
+    const e = errors.find((x) => x.rule === 'cumulative-no-sum');
+    expect(e).toBeTruthy();
+    expect(e?.origin).toBe('capability');
+  });
+});
+
+describe('routeAfterValidate', () => {
+  const errs = (origin: 'concept' | 'capability'): ValidationError[] => [{ rule: 'orphan-class', subject: 'x', message: 'm', origin }];
+  it('routes capability-only errors to capability-infer', () => {
+    expect(routeAfterValidate({ validationErrors: errs('capability'), retryCount: 0 } as OntologyState)).toBe('capability-infer');
+  });
+  it('routes concept errors to concept-extract', () => {
+    expect(routeAfterValidate({ validationErrors: errs('concept'), retryCount: 0 } as OntologyState)).toBe('concept-extract');
+  });
+  it('stops after the retry budget is exhausted', () => {
+    expect(routeAfterValidate({ validationErrors: errs('capability'), retryCount: 2 } as OntologyState)).toBe('__end__');
   });
 });
 

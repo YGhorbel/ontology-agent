@@ -19,11 +19,29 @@ const quoteIdent = (id: string): string => `"${id.replace(/"/g, '""')}"`;
 
 const isFiniteNumeric = (s: string): boolean => s.trim() !== '' && Number.isFinite(Number(s));
 
-/** Max distinct values for a column to get a sampled value dictionary. */
-const valueDictMaxDistinctFromEnv = (): number => {
-  const raw = Number(process.env.ONTOLOGY_VALUE_DICT_MAX_DISTINCT);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 25;
+/**
+ * Max distinct values for a column to be treated as a small enumeration — gets a
+ * sampled value dictionary and full `qsl:sampleValues` emission. `ONTOLOGY_ENUM_MAX_DISTINCT`
+ * (default 50) is the primary knob; the legacy `ONTOLOGY_VALUE_DICT_MAX_DISTINCT` still
+ * wins when set (back-compat).
+ */
+export const enumMaxDistinctFromEnv = (): number => {
+  const legacy = Number(process.env.ONTOLOGY_VALUE_DICT_MAX_DISTINCT);
+  if (Number.isFinite(legacy) && legacy > 0) return Math.floor(legacy);
+  const raw = Number(process.env.ONTOLOGY_ENUM_MAX_DISTINCT);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 50;
 };
+
+/** Common sentinels that stand in for unknown/missing in low-cardinality columns. */
+const NULL_SENTINELS = new Set(['', '-', '--', 'n/a', 'na', 'null', 'none', 'unknown', '?', '\\n']);
+
+/** First sentinel found among sampled values, or null — surfaced as `qsl:nullPlaceholder`. */
+export function detectNullPlaceholder(sampleValues: string[]): string | null {
+  for (const v of sampleValues) {
+    if (NULL_SENTINELS.has(v.trim().toLowerCase())) return v;
+  }
+  return null;
+}
 
 /**
  * A *text*-typed column whose min and max both parse as finite numbers — i.e. the
@@ -60,7 +78,7 @@ export async function sampleCategoricalValues(
   keyCols: Set<string>,
   opts: ValueDictOptions = {},
 ): Promise<Map<string, string[]>> {
-  const max = opts.maxDistinct ?? valueDictMaxDistinctFromEnv();
+  const max = opts.maxDistinct ?? enumMaxDistinctFromEnv();
   const out = new Map<string, string[]>();
   for (const p of profiles) {
     if (p.distinctCount === null || p.distinctCount <= 0 || p.distinctCount > max) continue;
@@ -90,6 +108,8 @@ export function deriveColumnFacts(
 
   return profiles.map((p) => {
     const id = key2(p.table, p.column);
+    const sampleValues = samplesByCol.get(id) ?? [];
+    const placeholder = detectNullPlaceholder(sampleValues);
     return ColumnFactSchema.parse({
       table: p.table,
       column: p.column,
@@ -99,7 +119,12 @@ export function deriveColumnFacts(
       isPrimaryKey: primary.has(id),
       distinctCount: p.distinctCount,
       nullable: p.nullCount > 0, // data-observed: the column contains NULLs
-      sampleValues: samplesByCol.get(id) ?? [],
+      sampleValues,
+      numRows: p.numRows,
+      nullCount: p.nullCount,
+      min: p.min,
+      max: p.max,
+      ...(placeholder !== null ? { nullPlaceholder: placeholder } : {}),
     });
   });
 }

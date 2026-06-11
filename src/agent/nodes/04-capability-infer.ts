@@ -38,6 +38,10 @@ export const CapabilityItemSchema = z.object({
   altLabels: z.array(z.string()).describe('Synonyms; empty array if none.'),
   formulaHint: z.string().nullable().describe('SQL-ish formula referencing real table.column names, or null.'),
   unit: z.string().nullable().describe('Unit such as EUR, count, days; or null.'),
+  preferredDirection: z
+    .enum(['higher', 'lower'])
+    .nullable()
+    .describe('For metrics: is a larger value the better/more-extreme one? "higher" (revenue, points, speed, GPA) or "lower" (debt, default rate, dropout rate, lap time, delay); null for non-metrics.'),
 });
 export const InferredCapabilitiesSchema = z.object({
   capabilities: z.array(CapabilityItemSchema),
@@ -56,6 +60,7 @@ function mapToCapabilities(inferred: InferredCapabilities, schema: CanonicalSche
       altLabel: item.altLabels,
       ...(item.formulaHint ? { formulaHint: item.formulaHint } : {}),
       ...(item.unit ? { unit: item.unit } : {}),
+      ...(item.preferredDirection ? { preferredDirection: item.preferredDirection } : {}),
       provenance: 'llm',
     });
   }
@@ -109,6 +114,7 @@ export function applyRevenueFallback(capabilities: Capability[], schema: Canonic
     altLabel: ['turnover', 'top-line'],
     formulaHint: `SUM(${rev.grossTable}.${rev.grossColumn}) - COALESCE(SUM(${rev.refundTable}.${rev.refundColumn}), 0)`,
     unit: 'EUR',
+    preferredDirection: 'higher',
     provenance: 'deterministic-fallback',
   };
   return [...capabilities, fallback];
@@ -123,10 +129,24 @@ export function createCapabilityInferNode(llm: StructuredLlm) {
       throw new Error('capability-infer: required prior state is missing.');
     }
 
-    const user = await buildCapabilityInferPrompt(schema, concepts, relationships);
+    // On a capability-only retry (⑤→④), prior errors are all capability-origin; feed them
+    // back and count one retry here. A concept retry (⑤→②) re-runs node 4 too, but then the
+    // pending errors include concept-origin ones, so this node does NOT double-count.
+    const errors = state.validationErrors ?? [];
+    const isCapabilityRetry = errors.length > 0 && errors.every((e) => e.origin === 'capability');
+    const priorErrors = errors
+      .filter((e) => e.origin === 'capability')
+      .map((e) => `[${e.rule}] ${e.subject}: ${e.message}`);
+
+    const user = await buildCapabilityInferPrompt(schema, concepts, relationships, {
+      columnFacts: state.columnFacts ?? [],
+      priorErrors,
+    });
     const inferred = await llm.generate(InferredCapabilitiesSchema, CAPABILITY_INFER_SYSTEM, user);
     const mapped = mapToCapabilities(inferred, schema);
     const withRevenue = applyRevenueFallback(mapped, schema);
-    return { capabilities: withRevenue };
+    return isCapabilityRetry
+      ? { capabilities: withRevenue, retryCount: state.retryCount + 1 }
+      : { capabilities: withRevenue };
   };
 }

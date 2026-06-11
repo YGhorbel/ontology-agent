@@ -19,6 +19,7 @@ import { discoverKeys } from '../../profiling/key-discovery.js';
 import { generateCandidatePairs } from '../../profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../profiling/foreign-keys.js';
 import { buildColumnFacts } from '../../profiling/column-facts.js';
+import { detectCumulativeMeasures, temporalityEvidenceString } from '../../profiling/monotonicity.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
 /** Factory: binds the connector so tests can inject a fake Queryable. */
@@ -38,6 +39,17 @@ export function createRelationshipDiscoverNode(connect: SchemaConnector) {
       // Per-column query metadata (type, keyness, numeric-as-text, value dictionaries),
       // reusing the same open connection for the bounded value-sampling pass.
       const columnFacts = await buildColumnFacts(client, profiles, keys);
+
+      // Cumulative-measure detection (Fix 3): tag running-total measures so node 4 never
+      // SUMs them. Uses the discovered FK graph for partition/order; runs once, here in 1b.
+      const cumulative = await detectCumulativeMeasures(client, schema, foreignKeyCandidates, profiles);
+      for (const fact of columnFacts) {
+        const evidence = cumulative.get(`${fact.table} ${fact.column}`);
+        if (evidence) {
+          fact.temporality = 'cumulative-snapshot';
+          fact.temporalityEvidence = temporalityEvidenceString(evidence);
+        }
+      }
       return { foreignKeyCandidates, columnFacts };
     } finally {
       await client.close();

@@ -75,7 +75,7 @@ describe('createCapabilityInferNode', () => {
         when: () => true,
         respond: () => ({
           capabilities: [
-            { kind: 'metric', table: 'ghost_table', column: null, prefLabel: 'ghost', altLabels: [], formulaHint: null, unit: null },
+            { kind: 'metric', table: 'ghost_table', column: null, prefLabel: 'ghost', altLabels: [], formulaHint: null, unit: null, preferredDirection: null },
           ],
         }),
       },
