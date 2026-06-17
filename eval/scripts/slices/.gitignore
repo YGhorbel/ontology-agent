@@ -1,0 +1,6 @@
+# Regenerable reload artifacts — never commit.
+# Per-DB SQL slices total ~1 GB; conn_map.tsv contains DB credentials.
+*.sql
+conn_map.tsv
+table_db_map.tsv
+split_manifest.tsv

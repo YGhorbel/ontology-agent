@@ -22,6 +22,8 @@
     "test": "vitest run --dir test/nodes",
     "test:unit": "vitest run --dir test/nodes",
     "test:e2e": "vitest run test/agent.test.ts",
+    "test:eval": "vitest run --dir eval/test",
+    "eval:report": "tsx eval/src/metrics.ts",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down -v",
     "viz": "tsx scripts/visualize.ts",

@@ -17,6 +17,6 @@
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "test"],
+  "include": ["src", "test", "eval"],
   "exclude": ["node_modules", "dist"]
 }

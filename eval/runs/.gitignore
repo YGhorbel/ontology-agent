@@ -1,0 +1,3 @@
+# Run logs are generated artifacts — never commit.
+*.jsonl
+*.header.json
