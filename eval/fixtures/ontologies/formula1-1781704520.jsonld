@@ -1,0 +1,6083 @@
+{
+  "@context": {
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "qsl": "https://qwery.dev/semantic-layer/v1/"
+  },
+  "qsl:ontology": {
+    "@id": "https://qwery.dev/semantic-layer/v1/formula1",
+    "@type": "owl:Ontology",
+    "rdfs:label": "Semantic layer for datasource \"formula1\"",
+    "owl:versionInfo": "qsl/v2 generator 0.1.0 build 1781704520",
+    "dcterms:created": "2026-06-17T13:55:20.515Z",
+    "qsl:sourceFingerprint": "01018f64cc60acf345fe6e6622dd43bf1dc4388da48e9048b11ad28e22920c3a",
+    "qsl:knobs": "ONTOLOGY_IND_MIN_CONTAINMENT=0.7 (default); ONTOLOGY_NAME_MATCH_MIN=1.0 (default); ONTOLOGY_NAME_ONLY_CONFIDENCE=0.65 (default); ONTOLOGY_FK_MIN_SCORE=0 (default); ONTOLOGY_ENUM_MAX_DISTINCT=50 (default); ONTOLOGY_PROMPT_SAMPLE_VALUES=15 (default); ONTOLOGY_VALIDATE_DRY_RUN=true (default); ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS=5000 (default); ONTOLOGY_MONOTONIC_MIN_RATIO=0.99 (default); ONTOLOGY_EXPORT_MIN_CONF=0.5 (default); ONTOLOGY_CARDINALITY_MIN_CONF=0.5 (default); ONTOLOGY_COMPOSITE_MAX_ROWS=5000000 (default)"
+  },
+  "@graph": [
+    {
+      "@id": "qsl:class/circuits",
+      "@type": "owl:Class",
+      "rdfs:label": "Racing circuit",
+      "rdfs:comment": "Represents a motor-racing circuit (race track); the table lists 72 distinct circuits (circuitid range [2..73]).",
+      "skos:prefLabel": "Racing circuit",
+      "skos:altLabel": [
+        "Circuit",
+        "Race track",
+        "Track"
+      ],
+      "qsl:mapsToTable": "circuits"
+    },
+    {
+      "@id": "qsl:property/circuits/circuitid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "circuit identifier",
+      "rdfs:comment": "Primary numeric identifier for the circuit; 72 distinct values ranging [2..73] and no nulls.",
+      "skos:prefLabel": "circuit identifier",
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "circuitid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 72
+    },
+    {
+      "@id": "qsl:property/circuits/circuitref",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "circuit reference",
+      "rdfs:comment": "Short textual reference (slug) for the circuit, with 72 distinct non-null values (profile range shown [BAK..zolder]).",
+      "skos:prefLabel": "circuit reference",
+      "skos:altLabel": [
+        "short code",
+        "slug"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "circuitref",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 72
+    },
+    {
+      "@id": "qsl:property/circuits/name",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "circuit name",
+      "rdfs:comment": "Full human-readable name of the circuit; 72 distinct values (profile range [A1-Ring..Zolder]).",
+      "skos:prefLabel": "circuit name",
+      "skos:altLabel": [
+        "track name",
+        "official name"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "name",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 72
+    },
+    {
+      "@id": "qsl:property/circuits/location",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "location",
+      "rdfs:comment": "Place (city/area) where the circuit is located; 69 distinct values (profile range [Abu Dhabi..Zandvoort]).",
+      "skos:prefLabel": "location",
+      "skos:altLabel": [
+        "city",
+        "town"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "location",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 69
+    },
+    {
+      "@id": "qsl:property/circuits/country",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "country",
+      "rdfs:comment": "Country hosting the circuit; 32 distinct values with profile samples including 'Bahrain', 'Argentina', and 'Japan'.",
+      "skos:prefLabel": "country",
+      "skos:altLabel": [
+        "nation"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "country",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 32,
+      "qsl:sampleValues": [
+        "Argentina",
+        "Australia",
+        "Austria",
+        "Azerbaijan",
+        "Bahrain",
+        "Belgium",
+        "Brazil",
+        "Canada",
+        "China",
+        "France",
+        "Germany",
+        "Hungary",
+        "India",
+        "Italy",
+        "Japan",
+        "Korea",
+        "Malaysia",
+        "Mexico",
+        "Monaco",
+        "Morocco",
+        "Netherlands",
+        "Portugal",
+        "Russia",
+        "Singapore",
+        "South Africa",
+        "Spain",
+        "Sweden",
+        "Switzerland",
+        "Turkey",
+        "UAE",
+        "UK",
+        "USA"
+      ]
+    },
+    {
+      "@id": "qsl:property/circuits/lat",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "latitude",
+      "rdfs:comment": "Geographic latitude of the circuit in decimal degrees; 71 distinct values with observed range [-34.9272..57.2653].",
+      "skos:prefLabel": "latitude",
+      "skos:altLabel": [
+        "lat"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "lat",
+      "qsl:dataType": "real",
+      "qsl:distinctCount": 71
+    },
+    {
+      "@id": "qsl:property/circuits/lng",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "longitude",
+      "rdfs:comment": "Geographic longitude of the circuit in decimal degrees; 71 distinct values with observed range [-118.189..138.927].",
+      "skos:prefLabel": "longitude",
+      "skos:altLabel": [
+        "lon",
+        "lng"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "lng",
+      "qsl:dataType": "real",
+      "qsl:distinctCount": 71
+    },
+    {
+      "@id": "qsl:property/circuits/alt",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "altitude",
+      "rdfs:comment": "Altitude/elevation of the circuit in meters; this column is null for all 72 rows (72/72 null) and has 0 distinct non-null values in the profile.",
+      "skos:prefLabel": "altitude",
+      "skos:altLabel": [
+        "elevation",
+        "alt_m"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "alt",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 0
+    },
+    {
+      "@id": "qsl:property/circuits/url",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "reference URL",
+      "rdfs:comment": "Public web reference for the circuit (often a Wikipedia page); 72 distinct values (profile range shown [http://en.wikipedia.org/wiki/A1-Ring..http://en.wikipedia.org/wiki/Zolder]).",
+      "skos:prefLabel": "reference URL",
+      "skos:altLabel": [
+        "wiki url"
+      ],
+      "qsl:mapsToTable": "circuits",
+      "qsl:mapsToColumn": "url",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 72
+    },
+    {
+      "@id": "qsl:class/constructorresults",
+      "@type": "owl:Class",
+      "rdfs:label": "Constructor result",
+      "rdfs:comment": "A row representing a constructor (team) result for a single race, recording which race and constructor the entry refers to and the points and status observed for that entry.",
+      "skos:prefLabel": "Constructor result",
+      "skos:altLabel": [
+        "Constructor race result",
+        "Team result",
+        "Constructor result entry"
+      ],
+      "qsl:mapsToTable": "constructorresults"
+    },
+    {
+      "@id": "qsl:property/constructorresults/constructorresultsid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "Result id",
+      "rdfs:comment": "Unique, non-null identifier for this constructor result row; profile shows 11082 distinct values with range [1..15579].",
+      "skos:prefLabel": "Result id",
+      "skos:altLabel": [
+        "constructorresultsid",
+        "id",
+        "row id"
+      ],
+      "qsl:mapsToTable": "constructorresults",
+      "qsl:mapsToColumn": "constructorresultsid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 11082
+    },
+    {
+      "@id": "qsl:property/constructorresults/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "Race id",
+      "rdfs:comment": "Identifier of the race this result row refers to; the column is nullable and the profile shows 907 distinct race ids in the range [1..982].",
+      "skos:prefLabel": "Race id",
+      "skos:altLabel": [
+        "race identifier"
+      ],
+      "qsl:mapsToTable": "constructorresults",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 907
+    },
+    {
+      "@id": "qsl:property/constructorresults/constructorid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "Constructor id",
+      "rdfs:comment": "Identifier of the constructor (team) associated with this result; foreign key to constructors.constructorid, nullable in the table and 172 distinct constructor ids appear in the profile (range [1..210]).",
+      "skos:prefLabel": "Constructor id",
+      "skos:altLabel": [
+        "team id"
+      ],
+      "qsl:mapsToTable": "constructorresults",
+      "qsl:mapsToColumn": "constructorid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 172
+    },
+    {
+      "@id": "qsl:property/constructorresults/points",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "Points",
+      "rdfs:comment": "Points awarded to the constructor for this race (per-row value, not a running total); profile shows values from 0 up to 66 with sample values including '0', '0.5', '1', '1.5', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2'.",
+      "skos:prefLabel": "Points",
+      "skos:altLabel": [
+        "race points",
+        "points awarded"
+      ],
+      "qsl:mapsToTable": "constructorresults",
+      "qsl:mapsToColumn": "points",
+      "qsl:dataType": "real",
+      "qsl:distinctCount": 45,
+      "qsl:sampleValues": [
+        "0",
+        "0.5",
+        "1",
+        "1.5",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "2.5",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "35",
+        "37",
+        "4",
+        "4.5",
+        "40",
+        "43",
+        "5",
+        "5.5",
+        "50",
+        "6",
+        "66",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/constructorresults/status",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "Status",
+      "rdfs:comment": "Short status code for the constructor's result; most rows are null (11065/11082 null) and the only non-null sample shown in the profile is 'D'.",
+      "skos:prefLabel": "Status",
+      "skos:altLabel": [
+        "status code",
+        "result status"
+      ],
+      "qsl:mapsToTable": "constructorresults",
+      "qsl:mapsToColumn": "status",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 1,
+      "qsl:sampleValues": [
+        "D"
+      ]
+    },
+    {
+      "@id": "qsl:class/constructors",
+      "@type": "owl:Class",
+      "rdfs:label": "Constructor",
+      "rdfs:comment": "A Formula 1 constructor (racing team) record such as McLaren, BMW Sauber, Williams, Renault or Toro Rosso; rows are identified by a numeric constructorid in the range [1..210] as observed in the data.",
+      "skos:prefLabel": "Constructor",
+      "skos:altLabel": [
+        "Constructor team",
+        "Racing constructor",
+        "Team"
+      ],
+      "qsl:mapsToTable": "constructors"
+    },
+    {
+      "@id": "qsl:property/constructors/constructorid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "Constructor ID",
+      "rdfs:comment": "Numeric primary key for the constructor (integer); sample rows include 1 (McLaren) and the profile shows a range [1..210] with 208 distinct values and 0/208 null.",
+      "skos:prefLabel": "Constructor ID",
+      "skos:altLabel": [
+        "constructor identifier",
+        "ID"
+      ],
+      "qsl:mapsToTable": "constructors",
+      "qsl:mapsToColumn": "constructorid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 208
+    },
+    {
+      "@id": "qsl:property/constructors/constructorref",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "Constructor reference",
+      "rdfs:comment": "Short machine-friendly reference or slug for the constructor, e.g. 'mclaren', 'bmw_sauber', 'williams', 'renault' and 'toro_rosso' as seen in the sample rows; nullable in the schema but no nulls observed in the profile (0/208 null).",
+      "skos:prefLabel": "Constructor reference",
+      "skos:altLabel": [
+        "reference",
+        "slug",
+        "short name"
+      ],
+      "qsl:mapsToTable": "constructors",
+      "qsl:mapsToColumn": "constructorref",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 208
+    },
+    {
+      "@id": "qsl:property/constructors/name",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "Constructor name",
+      "rdfs:comment": "Official/display name of the constructor such as 'McLaren', 'BMW Sauber', 'Williams', 'Renault' and 'Toro Rosso' from the sample rows; nullable in the schema but no nulls observed in the profile (0/208 null).",
+      "skos:prefLabel": "Constructor name",
+      "skos:altLabel": [
+        "team name",
+        "display name"
+      ],
+      "qsl:mapsToTable": "constructors",
+      "qsl:mapsToColumn": "name",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 208
+    },
+    {
+      "@id": "qsl:property/constructors/nationality",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "Nationality",
+      "rdfs:comment": "Nationality of the constructor: a small enumeration of 24 distinct values (profile samples include 'American', 'British', 'German' and 'Italian'); nullable in the schema but no nulls observed in the profile (0/208 null).",
+      "skos:prefLabel": "Nationality",
+      "skos:altLabel": [
+        "team nationality"
+      ],
+      "qsl:mapsToTable": "constructors",
+      "qsl:mapsToColumn": "nationality",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 24,
+      "qsl:sampleValues": [
+        "American",
+        "Australian",
+        "Austrian",
+        "Belgium",
+        "Brazilian",
+        "British",
+        "Canadian",
+        "Dutch",
+        "East German",
+        "French",
+        "German",
+        "Hong Kong",
+        "Indian",
+        "Irish",
+        "Italian",
+        "Japanese",
+        "Malaysian",
+        "Mexican",
+        "New Zealand",
+        "Rhodesian",
+        "Russian",
+        "South African",
+        "Spanish",
+        "Swiss"
+      ]
+    },
+    {
+      "@id": "qsl:property/constructors/url",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "Constructor URL",
+      "rdfs:comment": "URL to a web page about the constructor, commonly a Wikipedia page such as 'http://en.wikipedia.org/wiki/McLaren' observed in the sample rows; nullable in the schema but the profile shows 171 distinct URLs and 0/208 null.",
+      "skos:prefLabel": "Constructor URL",
+      "skos:altLabel": [
+        "website",
+        "Wikipedia page"
+      ],
+      "qsl:mapsToTable": "constructors",
+      "qsl:mapsToColumn": "url",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 171
+    },
+    {
+      "@id": "qsl:class/constructorstandings",
+      "@type": "owl:Class",
+      "rdfs:label": "Constructor standing",
+      "rdfs:comment": "A record of a constructor's championship standing as recorded for a specific race.",
+      "skos:prefLabel": "Constructor standing",
+      "skos:altLabel": [
+        "Constructor championship standing",
+        "Team standing",
+        "Constructor rank"
+      ],
+      "qsl:mapsToTable": "constructorstandings"
+    },
+    {
+      "@id": "qsl:property/constructorstandings/constructorstandingsid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Constructor standing id",
+      "rdfs:comment": "Surrogate primary key for this table: a unique identifier for this constructor standing record.",
+      "skos:prefLabel": "Constructor standing id",
+      "skos:altLabel": [
+        "standing id",
+        "constructor standings id",
+        "standing identifier"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "constructorstandingsid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 11836
+    },
+    {
+      "@id": "qsl:property/constructorstandings/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Race id",
+      "rdfs:comment": "Identifier of the race/event for which this standing is recorded; observed race id values span range [1..982].",
+      "skos:prefLabel": "Race id",
+      "skos:altLabel": [
+        "event id",
+        "race identifier"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 906
+    },
+    {
+      "@id": "qsl:property/constructorstandings/constructorid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Constructor id",
+      "rdfs:comment": "Identifier of the constructor (team) whose standing is recorded; 156 distinct constructors observed with ids in the range [1..210].",
+      "skos:prefLabel": "Constructor id",
+      "skos:altLabel": [
+        "team id",
+        "team",
+        "constructor identifier"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "constructorid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 156
+    },
+    {
+      "@id": "qsl:property/constructorstandings/points",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Constructor points",
+      "rdfs:comment": "Running total (cumulative) of championship points for the constructor as of the race (this is a cumulative value, not points awarded solely at that race); observed values range [0..765] with 436 distinct values.",
+      "skos:prefLabel": "Constructor points",
+      "skos:altLabel": [
+        "total points"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "points",
+      "qsl:dataType": "real",
+      "qsl:distinctCount": 436,
+      "qsl:temporality": "cumulative-snapshot",
+      "qsl:temporalityEvidence": {
+        "partitionColumns": [
+          "constructorid",
+          "year"
+        ],
+        "orderColumn": "round",
+        "ratio": 0.99990730441231
+      }
+    },
+    {
+      "@id": "qsl:property/constructorstandings/position",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Position",
+      "rdfs:comment": "Numeric place in the constructor championship standings as of the race; a small enumeration with 22 distinct values (profile samples include '1', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2', '20', '21', '22').",
+      "skos:prefLabel": "Position",
+      "skos:altLabel": [
+        "position number"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "position",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 22,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/constructorstandings/positiontext",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Position (text)",
+      "rdfs:comment": "Textual representation of the constructor's position as stored in the source; profile samples include '1', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2', '20', '21', '22'.",
+      "skos:prefLabel": "Position (text)",
+      "skos:altLabel": [
+        "position as stored",
+        "position string"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "positiontext",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 23,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "E"
+      ]
+    },
+    {
+      "@id": "qsl:property/constructorstandings/wins",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "Wins (cumulative)",
+      "rdfs:comment": "Cumulative count of race wins for the constructor as of the race (running total, not per-race wins); profile samples include '0', '1', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2', '3', '4' and observed range [0..19].",
+      "skos:prefLabel": "Wins (cumulative)",
+      "skos:altLabel": [
+        "constructor wins",
+        "total wins",
+        "race wins"
+      ],
+      "qsl:mapsToTable": "constructorstandings",
+      "qsl:mapsToColumn": "wins",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 20,
+      "qsl:sampleValues": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ],
+      "qsl:temporality": "cumulative-snapshot",
+      "qsl:temporalityEvidence": {
+        "partitionColumns": [
+          "constructorid",
+          "year"
+        ],
+        "orderColumn": "round",
+        "ratio": 1
+      }
+    },
+    {
+      "@id": "qsl:class/drivers",
+      "@type": "owl:Class",
+      "rdfs:label": "Driver",
+      "rdfs:comment": "A record for an individual racing driver (840 rows present, identified by driverid).",
+      "skos:prefLabel": "Driver",
+      "skos:altLabel": [
+        "Racing driver",
+        "Competitor",
+        "Driver record"
+      ],
+      "qsl:mapsToTable": "drivers"
+    },
+    {
+      "@id": "qsl:property/drivers/driverid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Driver ID",
+      "rdfs:comment": "Primary key for the driver table: 840 distinct values with range [1..841].",
+      "skos:prefLabel": "Driver ID",
+      "skos:altLabel": [
+        "id",
+        "driver identifier"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "driverid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 840
+    },
+    {
+      "@id": "qsl:property/drivers/driverref",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Driver reference",
+      "rdfs:comment": "A unique textual reference/handle for the driver: 840 distinct non-null values with observed range [Cannoc..zunino].",
+      "skos:prefLabel": "Driver reference",
+      "skos:altLabel": [
+        "slug",
+        "short reference"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "driverref",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 840
+    },
+    {
+      "@id": "qsl:property/drivers/number",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Racing number",
+      "rdfs:comment": "The driver's racing number (nullable — 804/840 null); 36 distinct observed numbers with profile samples including '10', '11', '12', '13', '14', '17', '18', '19', '2', '20', '21', '22', '25', '26', '27'.",
+      "skos:prefLabel": "Racing number",
+      "skos:altLabel": [
+        "driver number"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "number",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 36,
+      "qsl:sampleValues": [
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "25",
+        "26",
+        "27",
+        "28",
+        "3",
+        "30",
+        "31",
+        "33",
+        "36",
+        "4",
+        "44",
+        "45",
+        "5",
+        "53",
+        "55",
+        "6",
+        "7",
+        "77",
+        "8",
+        "88",
+        "9",
+        "94",
+        "98",
+        "99"
+      ]
+    },
+    {
+      "@id": "qsl:property/drivers/code",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Driver code",
+      "rdfs:comment": "A short code for the driver (many nulls: 757/840 null); 80 distinct observed codes with values in the recorded range [ALB..ZON].",
+      "skos:prefLabel": "Driver code",
+      "skos:altLabel": [
+        "code abbreviation",
+        "short code"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "code",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 80
+    },
+    {
+      "@id": "qsl:property/drivers/forename",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Given name",
+      "rdfs:comment": "Driver's given name (no nulls observed: 0/840 null) with 465 distinct values, observed range [Adolf..Óscar].",
+      "skos:prefLabel": "Given name",
+      "skos:altLabel": [
+        "first name",
+        "forename"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "forename",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 465
+    },
+    {
+      "@id": "qsl:property/drivers/surname",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Family name",
+      "rdfs:comment": "Driver's family name (no nulls observed: 0/840 null) with 784 distinct values, observed range [Abate..Étancelin].",
+      "skos:prefLabel": "Family name",
+      "skos:altLabel": [
+        "last name",
+        "surname"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "surname",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 784
+    },
+    {
+      "@id": "qsl:property/drivers/dob",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Date of birth",
+      "rdfs:comment": "Driver's date of birth (nullable in a small number of rows: 1/840 null), 821 distinct dates with range [1896-12-28..1998-10-29].",
+      "skos:prefLabel": "Date of birth",
+      "skos:altLabel": [
+        "birth date",
+        "DOB"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "dob",
+      "qsl:dataType": "date",
+      "qsl:distinctCount": 821
+    },
+    {
+      "@id": "qsl:property/drivers/nationality",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Nationality",
+      "rdfs:comment": "Driver nationality (no nulls: 0/840 null), a 41-value enumeration with profile samples including 'American', 'British', and 'Dutch'.",
+      "skos:prefLabel": "Nationality",
+      "skos:altLabel": [
+        "citizenship"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "nationality",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 41,
+      "qsl:sampleValues": [
+        "American",
+        "American-Italian",
+        "Argentine",
+        "Argentine-Italian",
+        "Australian",
+        "Austrian",
+        "Belgian",
+        "Brazilian",
+        "British",
+        "Canadian",
+        "Chilean",
+        "Colombian",
+        "Czech",
+        "Danish",
+        "Dutch",
+        "East German",
+        "Finnish",
+        "French",
+        "German",
+        "Hungarian",
+        "Indian",
+        "Indonesian",
+        "Irish",
+        "Italian",
+        "Japanese",
+        "Liechtensteiner",
+        "Malaysian",
+        "Mexican",
+        "Monegasque",
+        "New Zealander",
+        "Polish",
+        "Portuguese",
+        "Rhodesian",
+        "Russian",
+        "South African",
+        "Spanish",
+        "Swedish",
+        "Swiss",
+        "Thai",
+        "Uruguayan",
+        "Venezuelan"
+      ]
+    },
+    {
+      "@id": "qsl:property/drivers/url",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "Reference URL",
+      "rdfs:comment": "A reference link for the driver (840 distinct values); sample includes the Wikipedia-style URL 'http://en.wikipedia.org/wiki/Zsolt_Baumgartner' as observed in the profile range.",
+      "skos:prefLabel": "Reference URL",
+      "skos:altLabel": [
+        "wikipedia URL",
+        "profile URL"
+      ],
+      "qsl:mapsToTable": "drivers",
+      "qsl:mapsToColumn": "url",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 840
+    },
+    {
+      "@id": "qsl:class/driverstandings",
+      "@type": "owl:Class",
+      "rdfs:label": "Driver standing",
+      "rdfs:comment": "A record of a driver's championship standing as-of a specific race (e.g., raceid 18) linking to a driver (e.g., driverid 1) in the drivers table.",
+      "skos:prefLabel": "Driver standing",
+      "skos:altLabel": [
+        "Driver ranking",
+        "Driver championship standing",
+        "Driver standings record"
+      ],
+      "qsl:mapsToTable": "driverstandings"
+    },
+    {
+      "@id": "qsl:property/driverstandings/driverstandingsid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Driver standing id",
+      "rdfs:comment": "Primary key for this driver standing row; sample rows include value 1.",
+      "skos:prefLabel": "Driver standing id",
+      "skos:altLabel": [
+        "Standing id",
+        "DriverStandingsID",
+        "Standing record id"
+      ],
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "driverstandingsid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 31578
+    },
+    {
+      "@id": "qsl:property/driverstandings/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Race id",
+      "rdfs:comment": "Identifier of the race this standing applies to; sample rows show raceid 18.",
+      "skos:prefLabel": "Race id",
+      "skos:altLabel": [
+        "Race identifier"
+      ],
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 970
+    },
+    {
+      "@id": "qsl:property/driverstandings/driverid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Driver id",
+      "rdfs:comment": "Foreign key linking this standing to a driver in the drivers table; sample rows include driverid 1.",
+      "skos:prefLabel": "Driver id",
+      "skos:altLabel": [
+        "Driver identifier"
+      ],
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "driverid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 833
+    },
+    {
+      "@id": "qsl:property/driverstandings/points",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Championship points",
+      "rdfs:comment": "Cumulative running total of championship points for the driver as-of the race (CUMULATIVE); sample values in the rows include 10, 8, 6, 5, and 4.",
+      "skos:prefLabel": "Championship points",
+      "skos:altLabel": [
+        "Points total",
+        "Driver points"
+      ],
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "points",
+      "qsl:dataType": "real",
+      "qsl:distinctCount": 337,
+      "qsl:temporality": "cumulative-snapshot",
+      "qsl:temporalityEvidence": {
+        "partitionColumns": [
+          "driverid",
+          "year"
+        ],
+        "orderColumn": "round",
+        "ratio": 1
+      }
+    },
+    {
+      "@id": "qsl:property/driverstandings/position",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Standing position",
+      "rdfs:comment": "Driver's numeric place in the championship standings as-of the race; sample rows include positions 1, 2, 3, 4, and 5.",
+      "skos:prefLabel": "Standing position",
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "position",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 108
+    },
+    {
+      "@id": "qsl:property/driverstandings/positiontext",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Position text",
+      "rdfs:comment": "Driver's standing as stored in the source system (text form); sample rows show '1', '2', '3', '4', and '5'.",
+      "skos:prefLabel": "Position text",
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "positiontext",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 109
+    },
+    {
+      "@id": "qsl:property/driverstandings/wins",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "Wins",
+      "rdfs:comment": "Cumulative running total of race wins for the driver as-of the race (CUMULATIVE); observed sample values include '0' and '1' (profile samples also include values up to '13').",
+      "skos:prefLabel": "Wins",
+      "skos:altLabel": [
+        "Win count",
+        "Race wins"
+      ],
+      "qsl:mapsToTable": "driverstandings",
+      "qsl:mapsToColumn": "wins",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 14,
+      "qsl:sampleValues": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ],
+      "qsl:temporality": "cumulative-snapshot",
+      "qsl:temporalityEvidence": {
+        "partitionColumns": [
+          "driverid",
+          "year"
+        ],
+        "orderColumn": "round",
+        "ratio": 1
+      }
+    },
+    {
+      "@id": "qsl:class/laptimes",
+      "@type": "owl:Class",
+      "rdfs:label": "Lap time",
+      "rdfs:comment": "Recorded lap time for a driver in a race; for example the table contains raceid 2, driverid 1, lap 1 with time '1:52.965' in the samples.",
+      "skos:prefLabel": "Lap time",
+      "skos:altLabel": [
+        "driver lap",
+        "lap record"
+      ],
+      "qsl:mapsToTable": "laptimes"
+    },
+    {
+      "@id": "qsl:property/laptimes/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:label": "race id",
+      "rdfs:comment": "Identifier of the race (foreign key to races); values observed in the dataset span [2..982], for example 2 appears in the sample rows.",
+      "skos:prefLabel": "race id",
+      "skos:altLabel": [
+        "race identifier"
+      ],
+      "qsl:mapsToTable": "laptimes",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 367
+    },
+    {
+      "@id": "qsl:property/laptimes/driverid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:label": "driver id",
+      "rdfs:comment": "Identifier of the driver who set the lap time (foreign key to drivers); example value in the samples is 1.",
+      "skos:prefLabel": "driver id",
+      "skos:altLabel": [
+        "driver identifier"
+      ],
+      "qsl:mapsToTable": "laptimes",
+      "qsl:mapsToColumn": "driverid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 121
+    },
+    {
+      "@id": "qsl:property/laptimes/lap",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:label": "lap number",
+      "rdfs:comment": "Sequential lap number within the race, observed in the range 1..78; sample rows include lap 1.",
+      "skos:prefLabel": "lap number",
+      "skos:altLabel": [
+        "lap index",
+        "lap sequence"
+      ],
+      "qsl:mapsToTable": "laptimes",
+      "qsl:mapsToColumn": "lap",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 78
+    },
+    {
+      "@id": "qsl:property/laptimes/position",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:label": "position",
+      "rdfs:comment": "Driver's on-track position at the end of the lap, a small enumeration of 24 distinct integer positions spanning 1..24; profile samples include '1' and the sample rows contain '10' and '11'.",
+      "skos:prefLabel": "position",
+      "skos:altLabel": [
+        "place",
+        "track position"
+      ],
+      "qsl:mapsToTable": "laptimes",
+      "qsl:mapsToColumn": "position",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 24,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/laptimes/time",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:label": "lap time text",
+      "rdfs:comment": "Textual representation of the lap duration as recorded (formatted like '1:52.965'); sample rows include '1:52.965' and there are 66,694 distinct text values.",
+      "skos:prefLabel": "lap time text",
+      "skos:altLabel": [
+        "time string",
+        "formatted lap time"
+      ],
+      "qsl:mapsToTable": "laptimes",
+      "qsl:mapsToColumn": "time",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 66694
+    },
+    {
+      "@id": "qsl:property/laptimes/milliseconds",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:label": "lap time milliseconds",
+      "rdfs:comment": "Lap duration expressed as an integer number of milliseconds, for example 112965 appears in the sample rows; values observed span [67411..7507547] with 66,694 distinct values.",
+      "skos:prefLabel": "lap time milliseconds",
+      "skos:altLabel": [
+        "lap ms"
+      ],
+      "qsl:mapsToTable": "laptimes",
+      "qsl:mapsToColumn": "milliseconds",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 66694
+    },
+    {
+      "@id": "qsl:class/pitstops",
+      "@type": "owl:Class",
+      "rdfs:label": "Pit stop",
+      "rdfs:comment": "A single pit stop made by a driver during a race (each row records one pit stop; sample rows include raceid 842 and driverid 1).",
+      "skos:prefLabel": "Pit stop",
+      "skos:altLabel": [
+        "pitstop",
+        "pit stop event",
+        "pit stop record"
+      ],
+      "qsl:mapsToTable": "pitstops"
+    },
+    {
+      "@id": "qsl:property/pitstops/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Race",
+      "rdfs:comment": "Foreign key to the race containing this pit stop; sample rows show raceid 842 (range in the table is [842..982]).",
+      "skos:prefLabel": "Race",
+      "skos:altLabel": [
+        "event"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 124
+    },
+    {
+      "@id": "qsl:property/pitstops/driverid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Driver",
+      "rdfs:comment": "Foreign key to the driver who made the pit stop; sample rows include driverid 1.",
+      "skos:prefLabel": "Driver",
+      "skos:altLabel": [
+        "competitor"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "driverid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 54
+    },
+    {
+      "@id": "qsl:property/pitstops/stop",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Stop number",
+      "rdfs:comment": "Ordinal number of this driver's pit stop within the race; small enumeration with 6 observed values (samples include '1' and '6').",
+      "skos:prefLabel": "Stop number",
+      "skos:altLabel": [
+        "pit stop sequence",
+        "stop index"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "stop",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 6,
+      "qsl:sampleValues": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    },
+    {
+      "@id": "qsl:property/pitstops/lap",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Lap",
+      "rdfs:comment": "Laps into the race when the pit stop occurred (integer lap numbers observed across the table, sample rows include lap 12 and 52).",
+      "skos:prefLabel": "Lap",
+      "skos:altLabel": [
+        "lap of stop"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "lap",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 73
+    },
+    {
+      "@id": "qsl:property/pitstops/time",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Clock time",
+      "rdfs:comment": "Wall-clock time of day when the pit stop was recorded (text time values; sample rows include '16:24:40' and '17:08:28').",
+      "skos:prefLabel": "Clock time",
+      "skos:altLabel": [
+        "stop time",
+        "time of stop"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "time",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 4650
+    },
+    {
+      "@id": "qsl:property/pitstops/duration",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Duration",
+      "rdfs:comment": "Duration of the pit stop as a textual time in seconds (observed values range roughly from 12.897 to 59.555; sample rows include '22.552' and '25.382').",
+      "skos:prefLabel": "Duration",
+      "skos:altLabel": [
+        "stop duration",
+        "pit stop duration"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "duration",
+      "qsl:dataType": "text",
+      "qsl:isNumericText": true,
+      "qsl:distinctCount": 4580
+    },
+    {
+      "@id": "qsl:property/pitstops/milliseconds",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:label": "Duration (ms)",
+      "rdfs:comment": "Duration of the pit stop expressed in milliseconds (integer ms values; sample rows include '22552' and '25382').",
+      "skos:prefLabel": "Duration (ms)",
+      "skos:altLabel": [
+        "duration milliseconds",
+        "stop duration ms"
+      ],
+      "qsl:mapsToTable": "pitstops",
+      "qsl:mapsToColumn": "milliseconds",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 4580
+    },
+    {
+      "@id": "qsl:class/qualifying",
+      "@type": "owl:Class",
+      "rdfs:label": "Qualifying result",
+      "rdfs:comment": "A qualifying result row records a driver's qualifying performance for a race; the table contains 6,967 rows (qualifyid distinct count 6,967) and qualifyid values span the observed range 23..7419.",
+      "skos:prefLabel": "Qualifying result",
+      "skos:altLabel": [
+        "Qualifying",
+        "Qualifying session result",
+        "Qualifying record"
+      ],
+      "qsl:mapsToTable": "qualifying"
+    },
+    {
+      "@id": "qsl:property/qualifying/qualifyid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Qualify ID",
+      "rdfs:comment": "Surrogate primary key for the qualifying row; non-null across the dataset (0/6,967 null) with distinct values spanning the observed range 23..7419.",
+      "skos:prefLabel": "Qualify ID",
+      "skos:altLabel": [
+        "qualifyid",
+        "qualifying id",
+        "qualifying identifier"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "qualifyid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 6967
+    },
+    {
+      "@id": "qsl:property/qualifying/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Race ID",
+      "rdfs:comment": "Foreign key referencing the race for this qualifying entry; nullable with 319 distinct race IDs and an observed range 2..982.",
+      "skos:prefLabel": "Race ID",
+      "skos:altLabel": [
+        "race identifier"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 319
+    },
+    {
+      "@id": "qsl:property/qualifying/driverid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Driver ID",
+      "rdfs:comment": "Foreign key to the driver who set these qualifying times; nullable with 151 distinct driver IDs and an observed range 1..841.",
+      "skos:prefLabel": "Driver ID",
+      "skos:altLabel": [
+        "driver identifier"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "driverid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 151
+    },
+    {
+      "@id": "qsl:property/qualifying/constructorid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Constructor ID",
+      "rdfs:comment": "Foreign key to the constructor (team) for this entry; nullable with 41 distinct constructors — profile samples include '1' and '10'.",
+      "skos:prefLabel": "Constructor ID",
+      "skos:altLabel": [
+        "constructor identifier",
+        "team id"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "constructorid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 41,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "131",
+        "14",
+        "15",
+        "16",
+        "164",
+        "166",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "205",
+        "206",
+        "207",
+        "208",
+        "209",
+        "21",
+        "210",
+        "22",
+        "23",
+        "24",
+        "25",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/qualifying/number",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Entry number (cumulative)",
+      "rdfs:comment": "CUMULATIVE: a running total as-of-event recorded in this column (the dataset labels this column CUMULATIVE); nullable with 48 distinct values in the observed range 0..99 and profile samples include '0' and '1'.",
+      "skos:prefLabel": "Entry number (cumulative)",
+      "skos:altLabel": [
+        "entry no."
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "number",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 48,
+      "qsl:sampleValues": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "36",
+        "4",
+        "40",
+        "44",
+        "45",
+        "46",
+        "47",
+        "5",
+        "53",
+        "55",
+        "6",
+        "7",
+        "77",
+        "8",
+        "88",
+        "9",
+        "94",
+        "98",
+        "99"
+      ],
+      "qsl:temporality": "cumulative-snapshot",
+      "qsl:temporalityEvidence": {
+        "partitionColumns": [
+          "constructorid",
+          "driverid",
+          "year"
+        ],
+        "orderColumn": "round",
+        "ratio": 0.9966861290831623
+      }
+    },
+    {
+      "@id": "qsl:property/qualifying/position",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Qualifying position",
+      "rdfs:comment": "The finishing place in the qualifying session for this entry; nullable with 28 distinct values spanning 1..28 and profile samples include '1' and '22'.",
+      "skos:prefLabel": "Qualifying position",
+      "skos:altLabel": [
+        "qualifying place",
+        "qualifying grid position"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "position",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 28,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/qualifying/q1",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Q1 time",
+      "rdfs:comment": "Lap time recorded for Q1 as a text string; frequently present (109 nulls out of 6,967) with 6,283 distinct observed strings and values stored in time-like text format.",
+      "skos:prefLabel": "Q1 time",
+      "skos:altLabel": [
+        "first qualifying time",
+        "Q1 lap time"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "q1",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 6283
+    },
+    {
+      "@id": "qsl:property/qualifying/q2",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Q2 time",
+      "rdfs:comment": "Lap time recorded for Q2 as a text string; often missing (3,577 nulls out of 6,967) with 3,222 distinct observed strings.",
+      "skos:prefLabel": "Q2 time",
+      "skos:altLabel": [
+        "second qualifying time",
+        "Q2 lap time"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "q2",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 3222
+    },
+    {
+      "@id": "qsl:property/qualifying/q3",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "Q3 time",
+      "rdfs:comment": "Lap time recorded for Q3 as a text string; mostly missing (4,935 nulls out of 6,967) with 1,959 distinct observed strings.",
+      "skos:prefLabel": "Q3 time",
+      "skos:altLabel": [
+        "third qualifying time",
+        "Q3 lap time"
+      ],
+      "qsl:mapsToTable": "qualifying",
+      "qsl:mapsToColumn": "q3",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 1959
+    },
+    {
+      "@id": "qsl:class/races",
+      "@type": "owl:Class",
+      "rdfs:label": "Race Event",
+      "rdfs:comment": "A motor-racing event (Grand Prix) held in a specific season and round, for example the 'Malaysian Grand Prix' or the 'Chinese Grand Prix'.",
+      "skos:prefLabel": "Race Event",
+      "skos:altLabel": [
+        "Grand Prix",
+        "F1 race",
+        "Motor race"
+      ],
+      "qsl:mapsToTable": "races"
+    },
+    {
+      "@id": "qsl:property/races/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Race ID",
+      "rdfs:comment": "Unique numeric identifier for the race record (primary key); sample value '2'.",
+      "skos:prefLabel": "Race ID",
+      "skos:altLabel": [
+        "race identifier",
+        "race key"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 954
+    },
+    {
+      "@id": "qsl:property/races/year",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Season Year",
+      "rdfs:comment": "The championship season year in which the race took place, for example '2009'.",
+      "skos:prefLabel": "Season Year",
+      "skos:altLabel": [
+        "calendar year"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "year",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 68
+    },
+    {
+      "@id": "qsl:property/races/round",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Season Round",
+      "rdfs:comment": "The round number within the season (small enumeration spanning 1..21); sample value '2'.",
+      "skos:prefLabel": "Season Round",
+      "skos:altLabel": [
+        "round number",
+        "event number"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "round",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 21,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/races/circuitid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Circuit ID",
+      "rdfs:comment": "Foreign key referencing the circuit where the race was held (circuits.circuitid); sample value '2'.",
+      "skos:prefLabel": "Circuit ID",
+      "skos:altLabel": [
+        "track id"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "circuitid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 71
+    },
+    {
+      "@id": "qsl:property/races/name",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Race Name",
+      "rdfs:comment": "The official name of the race event, for example 'Malaysian Grand Prix' or 'Chinese Grand Prix'.",
+      "skos:prefLabel": "Race Name",
+      "skos:altLabel": [
+        "event name",
+        "Grand Prix name"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "name",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 42,
+      "qsl:sampleValues": [
+        "Abu Dhabi Grand Prix",
+        "Argentine Grand Prix",
+        "Australian Grand Prix",
+        "Austrian Grand Prix",
+        "Azerbaijan Grand Prix",
+        "Bahrain Grand Prix",
+        "Belgian Grand Prix",
+        "Brazilian Grand Prix",
+        "British Grand Prix",
+        "Caesars Palace Grand Prix",
+        "Canadian Grand Prix",
+        "Chinese Grand Prix",
+        "Dallas Grand Prix",
+        "Detroit Grand Prix",
+        "Dutch Grand Prix",
+        "European Grand Prix",
+        "French Grand Prix",
+        "German Grand Prix",
+        "Hungarian Grand Prix",
+        "Indian Grand Prix",
+        "Indianapolis 500",
+        "Italian Grand Prix",
+        "Japanese Grand Prix",
+        "Korean Grand Prix",
+        "Luxembourg Grand Prix",
+        "Malaysian Grand Prix",
+        "Mexican Grand Prix",
+        "Monaco Grand Prix",
+        "Moroccan Grand Prix",
+        "Pacific Grand Prix",
+        "Pescara Grand Prix",
+        "Portuguese Grand Prix",
+        "Russian Grand Prix",
+        "San Marino Grand Prix",
+        "Singapore Grand Prix",
+        "South African Grand Prix",
+        "Spanish Grand Prix",
+        "Swedish Grand Prix",
+        "Swiss Grand Prix",
+        "Turkish Grand Prix",
+        "United States Grand Prix",
+        "United States Grand Prix West"
+      ]
+    },
+    {
+      "@id": "qsl:property/races/date",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Race Date",
+      "rdfs:comment": "The calendar date the race took place (date type), for example '2009-04-04'.",
+      "skos:prefLabel": "Race Date",
+      "skos:altLabel": [
+        "event date",
+        "race day"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "date",
+      "qsl:dataType": "date",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 954
+    },
+    {
+      "@id": "qsl:property/races/time",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Start Time",
+      "rdfs:comment": "The stored start time of the race (nullable); sample value '09:00:00'.",
+      "skos:prefLabel": "Start Time",
+      "skos:altLabel": [
+        "start time (local)"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "time",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 19,
+      "qsl:sampleValues": [
+        "04:30:00",
+        "05:00:00",
+        "06:00:00",
+        "07:00:00",
+        "08:00:00",
+        "09:00:00",
+        "09:30:00",
+        "11:00:00",
+        "11:30:00",
+        "12:00:00",
+        "13:00:00",
+        "14:00:00",
+        "14:30:00",
+        "15:00:00",
+        "16:00:00",
+        "17:00:00",
+        "18:00:00",
+        "19:00:00",
+        "20:00:00"
+      ]
+    },
+    {
+      "@id": "qsl:property/races/url",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "Race URL",
+      "rdfs:comment": "A link to an external web page about the race, for example 'http://en.wikipedia.org/wiki/2009_Malaysian_Grand_Prix'.",
+      "skos:prefLabel": "Race URL",
+      "skos:altLabel": [
+        "web link"
+      ],
+      "qsl:mapsToTable": "races",
+      "qsl:mapsToColumn": "url",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 954
+    },
+    {
+      "@id": "qsl:class/results",
+      "@type": "owl:Class",
+      "rdfs:label": "Race result",
+      "rdfs:comment": "A record of a driver's result in a particular race, linking to the race, driver, constructor and finish/status information for that entry.",
+      "skos:prefLabel": "Race result",
+      "skos:altLabel": [
+        "Result",
+        "Race finishing record",
+        "Driver race result",
+        "Race outcome"
+      ],
+      "qsl:mapsToTable": "results"
+    },
+    {
+      "@id": "qsl:property/results/resultid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Result ID",
+      "rdfs:comment": "Primary key for this result record (unique per row) identifying the result entry in the dataset.",
+      "skos:prefLabel": "Result ID",
+      "skos:altLabel": [
+        "Result identifier",
+        "Result key"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "resultid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 23179
+    },
+    {
+      "@id": "qsl:property/results/raceid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Race",
+      "rdfs:comment": "Reference to the race/event this result belongs to (foreign key to the races table).",
+      "skos:prefLabel": "Race",
+      "skos:altLabel": [
+        "Event"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "raceid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 948
+    },
+    {
+      "@id": "qsl:property/results/driverid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Driver",
+      "rdfs:comment": "Reference to the driver who produced this result (foreign key to the drivers table).",
+      "skos:prefLabel": "Driver",
+      "skos:altLabel": [
+        "Competitor"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "driverid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 839
+    },
+    {
+      "@id": "qsl:property/results/constructorid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Constructor",
+      "rdfs:comment": "Reference to the constructor/team associated with this entry (foreign key to the constructors table).",
+      "skos:prefLabel": "Constructor",
+      "skos:altLabel": [
+        "Team"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "constructorid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 207
+    },
+    {
+      "@id": "qsl:property/results/number",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Car number",
+      "rdfs:comment": "The driver's racing number for the entry (nullable integer; 128 distinct observed values across the dataset).",
+      "skos:prefLabel": "Car number",
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "number",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 128
+    },
+    {
+      "@id": "qsl:property/results/grid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Grid position",
+      "rdfs:comment": "The starting/grid position on the race grid (integer; observed sample values include '2' and other positions between 0 and 34).",
+      "skos:prefLabel": "Grid position",
+      "skos:altLabel": [
+        "Starting position",
+        "Grid slot"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "grid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 35,
+      "qsl:sampleValues": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/results/position",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Finish position",
+      "rdfs:comment": "Driver's numeric finishing position in the race (nullable integer with 33 distinct values; profile samples include '1' and '22').",
+      "skos:prefLabel": "Finish position",
+      "skos:altLabel": [
+        "Finishing position",
+        "Final position"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "position",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 33,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/results/positiontext",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Finish position (text)",
+      "rdfs:comment": "The finishing position as stored in the source system (text); this field contains a small enumeration (39 distinct values) and may hold values such as '1' or status codes like 'W' where letters indicate non-standard positions.",
+      "skos:prefLabel": "Finish position (text)",
+      "skos:altLabel": [
+        "Reported position"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "positiontext",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 39,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "D",
+        "E",
+        "F",
+        "N",
+        "R",
+        "W"
+      ]
+    },
+    {
+      "@id": "qsl:property/results/positionorder",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Position order",
+      "rdfs:comment": "Numeric value used to order results for the race (integer with values observed in range 1..39; profile samples include '1' and '22').",
+      "skos:prefLabel": "Position order",
+      "skos:altLabel": [
+        "Ordering position",
+        "Result order"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "positionorder",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 39,
+      "qsl:sampleValues": [
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "3",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/results/points",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Points",
+      "rdfs:comment": "Points awarded for this result (real number; 33 distinct observed values, with examples such as '10' and '0.5').",
+      "skos:prefLabel": "Points",
+      "skos:altLabel": [
+        "Points awarded"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "points",
+      "qsl:dataType": "real",
+      "qsl:distinctCount": 33,
+      "qsl:sampleValues": [
+        "0",
+        "0.5",
+        "1",
+        "1.33",
+        "1.5",
+        "10",
+        "12",
+        "15",
+        "16",
+        "18",
+        "2",
+        "2.5",
+        "20",
+        "24",
+        "25",
+        "3",
+        "3.14",
+        "3.5",
+        "30",
+        "36",
+        "4",
+        "4.14",
+        "4.5",
+        "5",
+        "50",
+        "6",
+        "6.14",
+        "6.5",
+        "7",
+        "8",
+        "8.14",
+        "8.5",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/results/laps",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Laps completed",
+      "rdfs:comment": "Count of laps completed by the entry in the race (integer; observed range 0..200).",
+      "skos:prefLabel": "Laps completed",
+      "skos:altLabel": [
+        "Completed laps"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "laps",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 172
+    },
+    {
+      "@id": "qsl:property/results/time",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Race time",
+      "rdfs:comment": "Human-readable race time or time delta as stored in the source (text); profile range shows formats including deltas such as '+ 1:06.7' and full durations up to '4:04:39.537'.",
+      "skos:prefLabel": "Race time",
+      "skos:altLabel": [
+        "Total time",
+        "Time / time delta"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "time",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 5588
+    },
+    {
+      "@id": "qsl:property/results/milliseconds",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Time (ms)",
+      "rdfs:comment": "Race time expressed as an integer number of milliseconds corresponding to the 'time' field (nullable integer; profile range [1474899..15090540]).",
+      "skos:prefLabel": "Time (ms)",
+      "skos:altLabel": [
+        "Race time milliseconds",
+        "Elapsed milliseconds"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "milliseconds",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 5751
+    },
+    {
+      "@id": "qsl:property/results/fastestlap",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Fastest lap number",
+      "rdfs:comment": "Lap number on which this entry set its fastest lap in the race (nullable integer; observed values in the range 2..78).",
+      "skos:prefLabel": "Fastest lap number",
+      "skos:altLabel": [
+        "Lap of fastest time",
+        "Best lap number"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "fastestlap",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 77
+    },
+    {
+      "@id": "qsl:property/results/rank",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Fastest lap rank",
+      "rdfs:comment": "Rank associated with the fastest lap performance for the entry (nullable integer; small enumeration with values observed between 0 and 24, profile samples include '0' and '1').",
+      "skos:prefLabel": "Fastest lap rank",
+      "skos:altLabel": [
+        "Rank on fastest lap",
+        "Lap rank"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "rank",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 25,
+      "qsl:sampleValues": [
+        "0",
+        "1",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "2",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ]
+    },
+    {
+      "@id": "qsl:property/results/fastestlaptime",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Fastest lap time",
+      "rdfs:comment": "Fastest lap time for the entry as recorded (text value; profile range includes examples such as '1:07.411' up to '3:22.300').",
+      "skos:prefLabel": "Fastest lap time",
+      "skos:altLabel": [
+        "Best lap time",
+        "Fastest lap"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "fastestlaptime",
+      "qsl:dataType": "text",
+      "qsl:distinctCount": 4709
+    },
+    {
+      "@id": "qsl:property/results/fastestlapspeed",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Fastest lap speed",
+      "rdfs:comment": "Reported speed for the fastest lap (stored as text; profile shows numeric range between 100.615 and 91.610).",
+      "skos:prefLabel": "Fastest lap speed",
+      "skos:altLabel": [
+        "Fastest lap average speed",
+        "Lap speed"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "fastestlapspeed",
+      "qsl:dataType": "text",
+      "qsl:isNumericText": true,
+      "qsl:distinctCount": 4794
+    },
+    {
+      "@id": "qsl:property/results/statusid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "Status",
+      "rdfs:comment": "Status code describing the race finish condition for the entry (foreign key to the status table; 131 distinct status codes observed).",
+      "skos:prefLabel": "Status",
+      "skos:altLabel": [
+        "Finish status",
+        "Result status"
+      ],
+      "qsl:mapsToTable": "results",
+      "qsl:mapsToColumn": "statusid",
+      "qsl:dataType": "bigint",
+      "qsl:distinctCount": 131
+    },
+    {
+      "@id": "qsl:class/seasons",
+      "@type": "owl:Class",
+      "rdfs:label": "Formula One season",
+      "rdfs:comment": "A Formula One championship season identified by its calendar year; sample years include 1950.",
+      "skos:prefLabel": "Formula One season",
+      "skos:altLabel": [
+        "F1 season",
+        "championship season",
+        "racing season"
+      ],
+      "qsl:mapsToTable": "seasons"
+    },
+    {
+      "@id": "qsl:property/seasons/year",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:label": "season year",
+      "rdfs:comment": "The calendar year of the Formula One season (not null); profile shows 68 distinct years spanning 1950..2017 and a sample value is 1950.",
+      "skos:prefLabel": "season year",
+      "skos:altLabel": [
+        "calendar year"
+      ],
+      "qsl:mapsToTable": "seasons",
+      "qsl:mapsToColumn": "year",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 68
+    },
+    {
+      "@id": "qsl:property/seasons/url",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:label": "season URL",
+      "rdfs:comment": "A nullable URL linking to a Wikipedia page for the season; a sample value is http://en.wikipedia.org/wiki/1950_Formula_One_season.",
+      "skos:prefLabel": "season URL",
+      "skos:altLabel": [
+        "wikipedia URL",
+        "season page"
+      ],
+      "qsl:mapsToTable": "seasons",
+      "qsl:mapsToColumn": "url",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 68
+    },
+    {
+      "@id": "qsl:class/status",
+      "@type": "owl:Class",
+      "rdfs:label": "Race result status",
+      "rdfs:comment": "A categorical entity representing a competitor's race outcome label; sample labels in the data include 'Finished', 'Disqualified' and 'Accident'.",
+      "skos:prefLabel": "Race result status",
+      "skos:altLabel": [
+        "Result status",
+        "Finishing status",
+        "Outcome"
+      ],
+      "qsl:mapsToTable": "status"
+    },
+    {
+      "@id": "qsl:property/status/statusid",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "Status ID",
+      "rdfs:comment": "Numeric identifier for the status term; sample values in the profile include 1, 2 and 3 (for example, statusid 1 is paired with the label 'Finished' in the sample rows).",
+      "skos:prefLabel": "Status ID",
+      "skos:altLabel": [
+        "status identifier",
+        "Status key",
+        "ID"
+      ],
+      "qsl:mapsToTable": "status",
+      "qsl:mapsToColumn": "statusid",
+      "qsl:dataType": "bigint",
+      "qsl:isPrimaryKey": true,
+      "qsl:isUnique": true,
+      "qsl:distinctCount": 134
+    },
+    {
+      "@id": "qsl:property/status/status",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "Status label",
+      "rdfs:comment": "Human-readable label describing the race outcome; sample labels include 'Finished', 'Disqualified', 'Accident', 'Collision' and 'Engine', and no nulls were observed in the profile (0/134).",
+      "skos:prefLabel": "Status label",
+      "skos:altLabel": [
+        "Status text",
+        "Outcome label",
+        "Result label"
+      ],
+      "qsl:mapsToTable": "status",
+      "qsl:mapsToColumn": "status",
+      "qsl:dataType": "text",
+      "qsl:observedUnique": true,
+      "qsl:distinctCount": 134
+    },
+    {
+      "@id": "qsl:relationship/races/races_circuitid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "circuitid"
+    },
+    {
+      "@id": "qsl:relationship/races/races_year_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:label": "year",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "year"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/constructorresults_constructorid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/constructorstandings_constructorid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/driverstandings_driverid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "driverid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/laptimes_driverid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "driverid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/laptimes_raceid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/pitstops_driverid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "driverid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/pitstops_raceid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/qualifying_constructorid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/qualifying_driverid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "driverid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/qualifying_raceid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/results/results_statusid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "statusid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/results/results_constructorid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/results/results_driverid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "driverid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/results/results_raceid_fkey",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "declared",
+      "qsl:confidence": 1,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/disc__raceid__races",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.95,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__raceid__races",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.95,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__raceid__races",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "raceid",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.95,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/nm__drivers",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "drivers",
+      "qsl:cardinality": "many-to-many",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.95,
+      "qsl:junctionTable": "driverstandings"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/comp__constructorstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9876353790613719,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "constructorid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "constructorid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/qualifying/comp__constructorstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9931389365351629,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "constructorid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "constructorid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/results/comp__constructorstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9562199679658302,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "constructorid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "constructorid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/laptimes/comp__driverstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9834057684709601,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "driverid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "driverid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/pitstops/comp__driverstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 1,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "driverid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "driverid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/qualifying/comp__driverstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9793311324816995,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "driverid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "driverid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/results/comp__driverstandings",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverstandings",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9850584668687744,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "driverid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "driverid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/laptimes/comp__qualifying",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "qualifying",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.7804556828657975,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "driverid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "driverid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:relationship/pitstops/comp__qualifying",
+      "@type": "owl:ObjectProperty",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "qualifying",
+      "qsl:cardinality": "many-to-one",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.9937328632980806,
+      "qsl:compositeJoin": true,
+      "qsl:joinFromColumns": [
+        "driverid",
+        "raceid"
+      ],
+      "qsl:joinToColumns": [
+        "driverid",
+        "raceid"
+      ]
+    },
+    {
+      "@id": "qsl:capability/timeGrain/races/race-date",
+      "@type": "qsl:Capability",
+      "qsl:kind": "timeGrain",
+      "qsl:scopeClass": "qsl:class/races",
+      "qsl:scopeProperty": "date",
+      "skos:prefLabel": "race date",
+      "skos:altLabel": [
+        "event date",
+        "race day"
+      ],
+      "qsl:unit": "date",
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/results/race-results-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/results",
+      "skos:prefLabel": "Race results fact",
+      "skos:altLabel": [
+        "results"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/laptimes/lap-times-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/laptimes",
+      "skos:prefLabel": "Lap times fact",
+      "skos:altLabel": [
+        "laps"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/pitstops/pit-stops-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/pitstops",
+      "skos:prefLabel": "Pit stops fact",
+      "skos:altLabel": [
+        "stops"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/qualifying/qualifying-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/qualifying",
+      "skos:prefLabel": "Qualifying fact",
+      "skos:altLabel": [
+        "qualifying results"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/constructorresults/constructor-results-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/constructorresults",
+      "skos:prefLabel": "Constructor results fact",
+      "skos:altLabel": [
+        "constructor race results"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/constructorstandings/constructor-standings-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/constructorstandings",
+      "skos:prefLabel": "Constructor standings fact",
+      "skos:altLabel": [
+        "constructor championship standings"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/factTable/driverstandings/driver-standings-fact",
+      "@type": "qsl:Capability",
+      "qsl:kind": "factTable",
+      "qsl:scopeClass": "qsl:class/driverstandings",
+      "skos:prefLabel": "Driver standings fact",
+      "skos:altLabel": [
+        "driver championship standings"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/dimension/drivers/driver",
+      "@type": "qsl:Capability",
+      "qsl:kind": "dimension",
+      "qsl:scopeClass": "qsl:class/drivers",
+      "skos:prefLabel": "Driver",
+      "skos:altLabel": [
+        "racer",
+        "competitor"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/dimension/constructors/constructor",
+      "@type": "qsl:Capability",
+      "qsl:kind": "dimension",
+      "qsl:scopeClass": "qsl:class/constructors",
+      "skos:prefLabel": "Constructor",
+      "skos:altLabel": [
+        "team"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/dimension/circuits/racing-circuit",
+      "@type": "qsl:Capability",
+      "qsl:kind": "dimension",
+      "qsl:scopeClass": "qsl:class/circuits",
+      "skos:prefLabel": "Racing circuit",
+      "skos:altLabel": [
+        "track",
+        "venue"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/dimension/seasons/season",
+      "@type": "qsl:Capability",
+      "qsl:kind": "dimension",
+      "qsl:scopeClass": "qsl:class/seasons",
+      "skos:prefLabel": "Season",
+      "skos:altLabel": [
+        "year",
+        "championship year"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/dimension/status/result-status",
+      "@type": "qsl:Capability",
+      "qsl:kind": "dimension",
+      "qsl:scopeClass": "qsl:class/status",
+      "skos:prefLabel": "Result status",
+      "skos:altLabel": [
+        "retirement status",
+        "finish status"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/dimension/races/race-event",
+      "@type": "qsl:Capability",
+      "qsl:kind": "dimension",
+      "qsl:scopeClass": "qsl:class/races",
+      "skos:prefLabel": "Race Event",
+      "skos:altLabel": [
+        "grand prix",
+        "round"
+      ],
+      "qsl:provenance": "llm"
+    },
+    {
+      "@id": "qsl:capability/metric/races/race-count",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/races",
+      "qsl:scopeProperty": "raceid",
+      "skos:prefLabel": "race count",
+      "skos:altLabel": [
+        "number of races",
+        "events count"
+      ],
+      "qsl:formulaHint": "COUNT(races.raceid)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/laptimes/lap-count",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/laptimes",
+      "qsl:scopeProperty": "lap",
+      "skos:prefLabel": "lap count",
+      "skos:altLabel": [
+        "number of laps"
+      ],
+      "qsl:formulaHint": "COUNT(laptimes.lap)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/laptimes/average-lap-time-ms",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/laptimes",
+      "qsl:scopeProperty": "milliseconds",
+      "skos:prefLabel": "average lap time (ms)",
+      "skos:altLabel": [
+        "mean lap time",
+        "avg lap ms"
+      ],
+      "qsl:formulaHint": "AVG(laptimes.milliseconds)",
+      "qsl:unit": "ms",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/laptimes/best-lap-time-ms",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/laptimes",
+      "qsl:scopeProperty": "milliseconds",
+      "skos:prefLabel": "best lap time (ms)",
+      "skos:altLabel": [
+        "fastest lap time",
+        "min lap ms"
+      ],
+      "qsl:formulaHint": "MIN(laptimes.milliseconds)",
+      "qsl:unit": "ms",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/pitstops/pit-stop-count",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/pitstops",
+      "qsl:scopeProperty": "stop",
+      "skos:prefLabel": "pit stop count",
+      "skos:altLabel": [
+        "number of pit stops",
+        "pit stops count"
+      ],
+      "qsl:formulaHint": "COUNT(pitstops.stop)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/pitstops/average-pit-stop-duration-ms",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/pitstops",
+      "qsl:scopeProperty": "milliseconds",
+      "skos:prefLabel": "average pit stop duration (ms)",
+      "skos:altLabel": [
+        "mean pit duration",
+        "avg pit ms"
+      ],
+      "qsl:formulaHint": "AVG(pitstops.milliseconds)",
+      "qsl:unit": "ms",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/pitstops/best-pit-stop-duration-ms",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/pitstops",
+      "qsl:scopeProperty": "milliseconds",
+      "skos:prefLabel": "best pit stop duration (ms)",
+      "skos:altLabel": [
+        "fastest pit stop",
+        "min pit ms"
+      ],
+      "qsl:formulaHint": "MIN(pitstops.milliseconds)",
+      "qsl:unit": "ms",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/qualifying/average-qualifying-position",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/qualifying",
+      "qsl:scopeProperty": "position",
+      "skos:prefLabel": "average qualifying position",
+      "skos:altLabel": [
+        "mean qualifying position",
+        "avg qual pos"
+      ],
+      "qsl:formulaHint": "AVG(qualifying.position)",
+      "qsl:unit": "position",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/qualifying/best-qualifying-position",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/qualifying",
+      "qsl:scopeProperty": "position",
+      "skos:prefLabel": "best qualifying position",
+      "skos:altLabel": [
+        "best qual pos",
+        "min qualifying position"
+      ],
+      "qsl:formulaHint": "MIN(qualifying.position)",
+      "qsl:unit": "position",
+      "qsl:preferredDirection": "lower",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/results/total-points",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/results",
+      "qsl:scopeProperty": "points",
+      "skos:prefLabel": "total points",
+      "skos:altLabel": [
+        "sum points",
+        "points total"
+      ],
+      "qsl:formulaHint": "SUM(results.points)",
+      "qsl:unit": "points",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/results/average-points",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/results",
+      "qsl:scopeProperty": "points",
+      "skos:prefLabel": "average points",
+      "skos:altLabel": [
+        "mean points per result",
+        "avg points"
+      ],
+      "qsl:formulaHint": "AVG(results.points)",
+      "qsl:unit": "points",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/results/wins-count",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/results",
+      "qsl:scopeProperty": "position",
+      "skos:prefLabel": "wins count",
+      "skos:altLabel": [
+        "number of wins",
+        "wins"
+      ],
+      "qsl:formulaHint": "SUM(CASE WHEN results.position = 1 THEN 1 ELSE 0 END)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/results/podium-count",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/results",
+      "qsl:scopeProperty": "position",
+      "skos:prefLabel": "podium count",
+      "skos:altLabel": [
+        "top-3 finishes",
+        "podiums"
+      ],
+      "qsl:formulaHint": "SUM(CASE WHEN results.position <= 3 THEN 1 ELSE 0 END)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/results/laps-completed-sum",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/results",
+      "qsl:scopeProperty": "laps",
+      "skos:prefLabel": "laps completed (sum)",
+      "skos:altLabel": [
+        "total laps completed"
+      ],
+      "qsl:formulaHint": "SUM(results.laps)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/results/fastest-lap-count",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/results",
+      "qsl:scopeProperty": "rank",
+      "skos:prefLabel": "fastest lap count",
+      "skos:altLabel": [
+        "number of fastest laps"
+      ],
+      "qsl:formulaHint": "SUM(CASE WHEN results.rank = 1 THEN 1 ELSE 0 END)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/driverstandings/season-driver-points",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/driverstandings",
+      "qsl:scopeProperty": "points",
+      "skos:prefLabel": "season driver points",
+      "skos:altLabel": [
+        "championship points",
+        "season points"
+      ],
+      "qsl:formulaHint": "MAX(driverstandings.points)",
+      "qsl:unit": "points",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/driverstandings/season-driver-wins",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/driverstandings",
+      "qsl:scopeProperty": "wins",
+      "skos:prefLabel": "season driver wins",
+      "skos:altLabel": [
+        "championship wins",
+        "season wins"
+      ],
+      "qsl:formulaHint": "MAX(driverstandings.wins)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/constructorstandings/season-constructor-points",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/constructorstandings",
+      "qsl:scopeProperty": "points",
+      "skos:prefLabel": "season constructor points",
+      "skos:altLabel": [
+        "constructor championship points",
+        "season constructor points"
+      ],
+      "qsl:formulaHint": "MAX(constructorstandings.points)",
+      "qsl:unit": "points",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/constructorstandings/season-constructor-wins",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/constructorstandings",
+      "qsl:scopeProperty": "wins",
+      "skos:prefLabel": "season constructor wins",
+      "skos:altLabel": [
+        "constructor championship wins",
+        "season constructor wins"
+      ],
+      "qsl:formulaHint": "MAX(constructorstandings.wins)",
+      "qsl:unit": "count",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    },
+    {
+      "@id": "qsl:capability/metric/constructorresults/constructor-points-sum",
+      "@type": "qsl:Capability",
+      "qsl:kind": "metric",
+      "qsl:scopeClass": "qsl:class/constructorresults",
+      "qsl:scopeProperty": "points",
+      "skos:prefLabel": "constructor points (sum)",
+      "skos:altLabel": [
+        "constructor race points",
+        "team points"
+      ],
+      "qsl:formulaHint": "SUM(constructorresults.points)",
+      "qsl:unit": "points",
+      "qsl:preferredDirection": "higher",
+      "qsl:provenance": "llm-validated",
+      "qsl:validationEvidence": [
+        "parse",
+        "bind",
+        "type",
+        "dry-run",
+        "temporality"
+      ]
+    }
+  ],
+  "qsl:candidateGraph": [
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__races",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/circuits/disc__circuitid__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/circuits"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/disc__constructorid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/disc__constructorid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/disc__constructorid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/constructorresults/disc__constructorid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructors/disc__constructorid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/constructors/disc__constructorid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructors/disc__constructorid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/constructors/disc__constructorid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__constructorid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__constructorid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__constructorid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__constructorid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__position__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__position__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__position__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__position__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__position__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/disc__position__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__driverid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__races",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/drivers/disc__number__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "number",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "number",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__driverid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__position__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__position__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__position__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__position__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__position__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/disc__position__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__driverid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__driverid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__driverid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__lap__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__lap__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__lap__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__lap__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__lap__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__lap__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__position__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__position__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__position__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__position__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__position__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/laptimes/disc__position__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/laptimes"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__raceid__qualifying",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "qualifyid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__raceid__results",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "resultid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__driverid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__stop__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "stop",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "stop",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__stop__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "stop",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "stop",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__stop__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "stop",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "stop",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__stop__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "stop",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "stop",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__stop__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "stop",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "stop",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__stop__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "stop",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "stop",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__lap__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__lap__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__lap__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__lap__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__lap__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/pitstops/disc__lap__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/pitstops"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "lap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "lap",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__qualifyid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "qualifyid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "qualifyid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__qualifyid__results",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "qualifyid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "qualifyid",
+      "qsl:joinToColumn": "resultid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__driverid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__driverid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__driverid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__constructorid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__constructorid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__constructorid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__constructorid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__position__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__position__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__position__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__position__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__position__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/disc__position__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__year__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "year",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__year__qualifying",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "year",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "qualifyid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__year__results",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "year",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "resultid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__round__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "round",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "round",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__round__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "round",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "round",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__round__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "round",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "round",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__round__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "round",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "round",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__round__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "round",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "round",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__round__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "round",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "round",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__races",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/races/disc__circuitid__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "circuitid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "circuitid",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__raceid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "raceid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "raceid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__driverid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "driverid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "driverid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__constructorid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__constructorid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__constructorid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__constructorid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "constructorid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "constructorid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__position__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__position__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__position__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__position__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__position__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__position__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "position",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "position",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__positionorder__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "positionorder",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "positionorder",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__positionorder__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "positionorder",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "positionorder",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__positionorder__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "positionorder",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "positionorder",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__positionorder__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "positionorder",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "positionorder",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__positionorder__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "positionorder",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "positionorder",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__positionorder__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "positionorder",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "positionorder",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__races",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "raceid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__fastestlap__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "fastestlap",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "fastestlap",
+      "qsl:joinToColumn": "statusid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__statusid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__statusid__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__statusid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__statusid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/results/disc__statusid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/seasons/disc__year__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "year",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/seasons/disc__year__qualifying",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/qualifying"
+      },
+      "rdfs:label": "year",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "qualifyid"
+    },
+    {
+      "@id": "qsl:relationship/seasons/disc__year__results",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/results"
+      },
+      "rdfs:label": "year",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "year",
+      "qsl:joinToColumn": "resultid"
+    },
+    {
+      "@id": "qsl:relationship/status/disc__statusid__constructorresults",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorresults"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "constructorresultsid"
+    },
+    {
+      "@id": "qsl:relationship/status/disc__statusid__constructors",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructors"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "constructorid"
+    },
+    {
+      "@id": "qsl:relationship/status/disc__statusid__constructorstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/constructorstandings"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "constructorstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/status/disc__statusid__drivers",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/drivers"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "driverid"
+    },
+    {
+      "@id": "qsl:relationship/status/disc__statusid__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "statusid",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:joinFromColumn": "statusid",
+      "qsl:joinToColumn": "driverstandingsid"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/nm__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverstandings",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:junctionTable": "constructorstandings"
+    },
+    {
+      "@id": "qsl:relationship/constructorstandings/nm__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "status",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:junctionTable": "constructorstandings"
+    },
+    {
+      "@id": "qsl:relationship/driverstandings/nm__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "status",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:junctionTable": "driverstandings"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/nm__driverstandings",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/driverstandings"
+      },
+      "rdfs:label": "driverstandings",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:junctionTable": "qualifying"
+    },
+    {
+      "@id": "qsl:relationship/qualifying/nm__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/races"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "status",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0.04999999999999999,
+      "qsl:junctionTable": "qualifying"
+    },
+    {
+      "@id": "qsl:relationship/races/nm__status",
+      "@type": "qsl:CandidateRelationship",
+      "rdfs:domain": {
+        "@id": "qsl:class/seasons"
+      },
+      "rdfs:range": {
+        "@id": "qsl:class/status"
+      },
+      "rdfs:label": "status",
+      "qsl:provenance": "discovered",
+      "qsl:confidence": 0,
+      "qsl:junctionTable": "races"
+    }
+  ]
+}
