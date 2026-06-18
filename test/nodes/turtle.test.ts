@@ -130,3 +130,22 @@ describe('toTrig (Fix 5/6)', () => {
     expect(trig).toContain('qsl:observedUnique true');
   });
 });
+
+describe('toTurtle — structured temporalityEvidence (Part 2b)', () => {
+  it('serializes the evidence object as a single JSON string literal', () => {
+    const concepts: ConceptCandidate[] = [
+      { source: { table: 'driverstandings' }, ontologyKind: 'Class', prefLabel: 'Standing', altLabel: [], rdfsLabel: 'Standing', rdfsComment: 'A standing.' },
+      { source: { table: 'driverstandings', column: 'points' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Points', altLabel: [], rdfsLabel: 'Points', rdfsComment: 'Cumulative points to date.' },
+    ];
+    const facts: ColumnFact[] = [
+      fact('driverstandings', 'points', {
+        dataType: 'real',
+        temporality: 'cumulative-snapshot',
+        temporalityEvidence: { partitionColumns: ['driverid', 'year'], orderColumn: 'round', ratio: 1 },
+      }),
+    ];
+    const ttl = toTurtle(assembleOntology(concepts, [], [], facts), 'formula1');
+    expect(ttl).toContain('qsl:temporality "cumulative-snapshot"');
+    expect(ttl).toContain('qsl:temporalityEvidence "{\\"partitionColumns\\":[\\"driverid\\",\\"year\\"],\\"orderColumn\\":\\"round\\",\\"ratio\\":1}"');
+  });
+});

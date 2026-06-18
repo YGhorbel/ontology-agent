@@ -23,6 +23,11 @@ export const LLM_SQL_SYSTEM = [
   'values (e.g. a full name → forename + surname). For a metric, use its given formula; for',
   '"best/worst/fastest/slowest" apply the metric\'s stated preferred direction (higher → ORDER BY DESC,',
   'lower → ASC); single-row superlatives use LIMIT 1. Quote string literals, leave numbers unquoted.',
+  '',
+  'A column marked "~cumulative" is a running total (e.g. championship points/wins AFTER a race), so',
+  'SUMming it double-counts. Take its LAST value per the stated partition instead — MAX per group, or',
+  'DISTINCT ON (partition) … ORDER BY the stated sequence column. A metric marked "[llm-inferred —',
+  'verify]" is an unvalidated guess; prefer a "[validated]" metric or a plain column when one fits.',
   'Return ONLY the structured output: the SQL, the tables it uses, and a one-line rationale.',
 ].join('\n');
 

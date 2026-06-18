@@ -48,6 +48,10 @@ export interface ColumnInfo {
   isPrimaryKey?: boolean;
   isUnique?: boolean;
   sampleValues?: string[];
+  /** Cumulative running-total measure (SUM double-counts → use MAX / last-value-per-group). */
+  temporality?: 'cumulative-snapshot';
+  /** Partition (entity+season) + order columns that justify the cumulative tag — the precise grain. */
+  temporalityEvidence?: { partitionColumns: string[]; orderColumn: string; ratio: number };
 }
 export interface CapabilityInfo {
   kind: string;
@@ -60,6 +64,10 @@ export interface CapabilityInfo {
   altLabel: string[];
   /** For a metric: whether a larger value is the better/more-extreme one (ranking polarity). */
   preferredDirection?: 'higher' | 'lower';
+  /** Trust tier of the capability: 'llm', 'llm-validated' (passed dry-run/type checks), or 'deterministic-fallback'. */
+  provenance?: string;
+  /** Which deterministic checks a validated metric passed (e.g. parse, bind, type, dry-run). */
+  validationEvidence?: string[];
 }
 export interface OntologyIndex {
   classes: Map<string, ClassInfo>;
@@ -107,6 +115,9 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
           // Effective uniqueness for query planning = constraint-backed OR profiling-observed.
           ...(n['qsl:isUnique'] || n['qsl:observedUnique'] ? { isUnique: true } : {}),
           ...(n['qsl:sampleValues'] !== undefined ? { sampleValues: n['qsl:sampleValues'] } : {}),
+          // Cumulative-snapshot tag + grain evidence → the SQL layer aggregates with MAX, not SUM.
+          ...(n['qsl:temporality'] !== undefined ? { temporality: n['qsl:temporality'] } : {}),
+          ...(n['qsl:temporalityEvidence'] !== undefined ? { temporalityEvidence: n['qsl:temporalityEvidence'] } : {}),
         });
         columnsByTable.set(table, list);
         break;
@@ -151,6 +162,8 @@ export function buildOntologyIndex(ontology: OntologyJsonLd): OntologyIndex {
           prefLabel: n['skos:prefLabel'],
           altLabel: n['skos:altLabel'] ?? [],
           ...(n['qsl:preferredDirection'] !== undefined ? { preferredDirection: n['qsl:preferredDirection'] } : {}),
+          ...(n['qsl:provenance'] !== undefined ? { provenance: n['qsl:provenance'] } : {}),
+          ...(n['qsl:validationEvidence'] !== undefined ? { validationEvidence: n['qsl:validationEvidence'] } : {}),
         });
         break;
       }

@@ -67,12 +67,28 @@ describe.skipIf(!dsn)('F1 integration (real DB)', () => {
       expect(assertedGraph.length).toBeGreaterThan(0);
       expect(candidateGraph.every((n) => n['@type'] === 'qsl:CandidateRelationship')).toBe(true);
 
-      // Fix 7: composite FK laptimes(raceid,driverid) → results(raceid,driverid), and a
+      // Fix 7 (reworked): composite FK laptimes(raceid,driverid) → results(raceid,driverid), and a
       // joinpath laptimes→constructors routes through a multi-column (composite) edge.
-      const composites = await discoverCompositeForeignKeys(client, schema, fks, profiles);
+      const composites = await discoverCompositeForeignKeys(client, schema, fks, keys, profiles);
       const lapToResults = composites.find((c) => c.sourceTable === 'laptimes' && c.targetTable === 'results');
       expect(lapToResults).toBeTruthy();
       expect(lapToResults!.sourceColumns.slice().sort()).toEqual(['driverid', 'raceid']);
+
+      // Precision: every composite edge is over real entity keys only (raceid/driverid/constructorid),
+      // none doubles a column, and none of the eight reported junk edges survive (either direction).
+      const ENTITY_KEYS = new Set(['raceid', 'driverid', 'constructorid']);
+      for (const c of composites) {
+        expect(c.sourceColumns[0]).not.toBe(c.sourceColumns[1]);
+        expect(c.targetColumns[0]).not.toBe(c.targetColumns[1]);
+        for (const col of [...c.sourceColumns, ...c.targetColumns]) expect(ENTITY_KEYS.has(col)).toBe(true);
+      }
+      const badPairs: Array<[string, string]> = [
+        ['circuits', 'constructors'], ['laptimes', 'circuits'], ['pitstops', 'status'], ['races', 'constructors'],
+        ['pitstops', 'constructorstandings'], ['drivers', 'driverstandings'], ['qualifying', 'driverstandings'], ['results', 'constructors'],
+      ];
+      for (const [s, t] of badPairs) {
+        expect(composites.find((c) => (c.sourceTable === s && c.targetTable === t) || (c.sourceTable === t && c.targetTable === s))).toBeUndefined();
+      }
 
       const fullRels = [...relationships, ...compositeRelationships(composites)];
       const index = buildOntologyIndex(assembleOntology(concepts, fullRels, [], facts));

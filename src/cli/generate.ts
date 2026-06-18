@@ -21,7 +21,7 @@ import { createOntologyStore, type RunStatus } from '../storage/ontology-store.j
 import { toTrig } from '../serialize/turtle.js';
 import { partitionDataset } from '../agent/assemble.js';
 import { buildOntologyHeader } from '../serialize/ontology-header.js';
-import type { OntologyDataset, OntologyJsonLd } from '../types/ontology.js';
+import type { OntologyDataset, OntologyJsonLd, ValidationError } from '../types/ontology.js';
 
 function parseArg(flag: string): string | undefined {
   const argv = process.argv.slice(2);
@@ -68,16 +68,35 @@ async function main(): Promise<number> {
   const startedAt = new Date();
   const store = createOntologyStore(storeDsn);
 
+  const fmt = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
+
   try {
     console.log(`[ontology-generator] Generating ontology for datasource "${datasourceId}"...`);
     const graph = buildProductionGraph();
-    const final = await graph.invoke(
+
+    // Stream node-by-node so we can time each step live (the run can take minutes).
+    // 'updates' mode yields { <node>: <stateUpdate> } per step; we time each and merge
+    // updates last-write-wins to reconstruct the final state (each node returns the
+    // authoritative new value for the keys it sets, so the keys we read below are correct).
+    const t0 = Date.now();
+    let lastTs = t0;
+    const final: Record<string, unknown> = {};
+    const stream = await graph.stream(
       { datasourceId, pgConnectionString: targetDsn },
-      { runName: 'ontology-generate', tags: ['ontology-agent'], metadata: { datasourceId } },
+      { runName: 'ontology-generate', tags: ['ontology-agent'], metadata: { datasourceId }, streamMode: 'updates' },
     );
+    for await (const chunk of stream) {
+      for (const [node, update] of Object.entries(chunk as Record<string, Record<string, unknown>>)) {
+        const now = Date.now();
+        console.log(`[ontology-generator] [+${fmt(now - t0)}] ✓ ${node} (${fmt(now - lastTs)})`);
+        lastTs = now;
+        if (update && typeof update === 'object') Object.assign(final, update);
+      }
+    }
+    console.log(`[ontology-generator] pipeline finished in ${fmt(Date.now() - t0)}`);
 
     const ontology = final.ontology as OntologyJsonLd | null;
-    const validationErrors = final.validationErrors ?? [];
+    const validationErrors = (final.validationErrors as ValidationError[] | undefined) ?? [];
     if (!ontology) throw new Error('Pipeline produced no ontology.');
 
     // Tier into asserted + candidate graphs and attach the reproducibility header (Fix 5/6).
@@ -130,7 +149,8 @@ async function main(): Promise<number> {
     console.log(`Export profile:       ${exportMode} (asserted ${assertedGraph.length} nodes, candidate ${candidateGraph.length} edges)`);
     console.log(`Fragments persisted:  ${fragmentCount} (datasource_id='${datasourceId}')`);
     console.log(`Validation errors:    ${validationErrors.length}`);
-    console.log(`Retries used:         ${final.retryCount}`);
+    console.log(`Retries used:         ${(final.retryCount as number | undefined) ?? 0}`);
+    console.log(`Elapsed (wall):       ${fmt(Date.now() - startedAt.getTime())}`);
     console.log(`\nInspect with:\n  SELECT fragment_kind, pref_label FROM ontology_fragment WHERE datasource_id='${datasourceId}' ORDER BY fragment_kind;`);
     if (process.env.LANGSMITH_PROJECT || process.env.LANGCHAIN_PROJECT) {
       console.log(`\nLangSmith project: ${process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT}`);

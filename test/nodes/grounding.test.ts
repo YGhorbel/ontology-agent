@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { selectRelevantSlice, buildFocusedGrounding, buildFullGrounding } from '../../src/query/grounding.js';
 import { f1Index } from '../fixtures/golden-questions.js';
+import type { OntologyIndex, ColumnInfo, CapabilityInfo } from '../../src/query/ontology-index.js';
 
 describe('buildFullGrounding (baseline)', () => {
   it('serializes all tables, sample values, metric formulas with polarity, and FK joins', () => {
@@ -38,5 +39,29 @@ describe('buildFocusedGrounding', () => {
     const { grounding } = buildFocusedGrounding('total points and gibberishtoken', f1Index);
     expect(grounding).toContain('Unresolved terms');
     expect(grounding).toContain('gibberishtoken');
+  });
+});
+
+describe('grounding annotations (ontology-signal wiring)', () => {
+  const col = (o: Partial<ColumnInfo> & { column: string }): ColumnInfo => ({ prefLabel: o.column, altLabel: [], comment: '', ...o });
+  const index: OntologyIndex = {
+    classes: new Map(),
+    columnsByTable: new Map<string, ColumnInfo[]>([
+      ['driverstandings', [col({ column: 'points', temporality: 'cumulative-snapshot', temporalityEvidence: { partitionColumns: ['driverid', 'year'], orderColumn: 'round', ratio: 1 } })]],
+      ['drivers', [col({ column: 'driverid', isPrimaryKey: true })]],
+    ]),
+    capabilities: [
+      { kind: 'metric', scopeTable: 'driverstandings', scopeColumn: 'points', prefLabel: 'championship points', altLabel: [], formulaHint: 'MAX(driverstandings.points)', provenance: 'llm' } as CapabilityInfo,
+    ],
+    joinEdges: [
+      { fromTable: 'driverstandings', fromColumn: 'driverid', toTable: 'drivers', toColumn: 'driverid', extraColumns: [], cardinality: 'many-to-one', confidence: 1, provenance: 'declared' },
+    ],
+  };
+
+  it('marks a cumulative column, the metric provenance tier, and a fan-out legend', () => {
+    const g = buildFullGrounding(index);
+    expect(g).toMatch(/points.*~cumulative \(last value per driverid\+year by round\)/);
+    expect(g).toContain('[llm-inferred — verify]');
+    expect(g).toContain('MULTIPLIES rows'); // cardinality legend in the FK block
   });
 });

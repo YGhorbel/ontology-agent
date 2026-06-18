@@ -19,7 +19,7 @@ import { discoverKeys } from '../../profiling/key-discovery.js';
 import { generateCandidatePairs } from '../../profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../profiling/foreign-keys.js';
 import { buildColumnFacts } from '../../profiling/column-facts.js';
-import { detectCumulativeMeasures, temporalityEvidenceString } from '../../profiling/monotonicity.js';
+import { detectCumulativeMeasures } from '../../profiling/monotonicity.js';
 import { discoverCompositeForeignKeys } from '../../profiling/composite-fk.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
@@ -48,12 +48,17 @@ export function createRelationshipDiscoverNode(connect: SchemaConnector) {
         const evidence = cumulative.get(`${fact.table} ${fact.column}`);
         if (evidence) {
           fact.temporality = 'cumulative-snapshot';
-          fact.temporalityEvidence = temporalityEvidenceString(evidence);
+          // Structured evidence (Part 2b): partition/order columns + observed monotonic ratio.
+          fact.temporalityEvidence = {
+            partitionColumns: evidence.partitionColumns,
+            orderColumn: evidence.orderColumn,
+            ratio: evidence.ratio,
+          };
         }
       }
       // Bounded composite (2-column) FK discovery (Fix 7): direct multi-key joins between
       // fact tables that share ≥2 unary FK parents (e.g. laptimes→results on raceid+driverid).
-      const compositeForeignKeys = await discoverCompositeForeignKeys(client, schema, foreignKeyCandidates, profiles);
+      const compositeForeignKeys = await discoverCompositeForeignKeys(client, schema, foreignKeyCandidates, keys, profiles);
       return { foreignKeyCandidates, columnFacts, compositeForeignKeys };
     } finally {
       await client.close();

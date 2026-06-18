@@ -24,6 +24,8 @@ export const LLM_INTENT_SYSTEM = [
   '- projection: plain attribute columns the question asks to SEE (e.g. a name/reference), not aggregates.',
   '- measures: a metric to aggregate — give {table, column, capability} using the metric\'s prefLabel as',
   '  capability so its declared formula is used. Use measures only when the question asks to aggregate.',
+  '  A column marked "~cumulative" is a running total (a snapshot AFTER each event), so it is a',
+  '  LAST-value, not a sum — only choose it as a measure when the question really wants that total.',
   '- groupDims: columns to GROUP BY (present only alongside a measure, e.g. "per X" / "by X").',
   '- filters: column = value (or op "in" for a set). Resolve named entities to the right TEXT column and',
   '  literal value — split a full person name into separate filters (forename + surname). Quote nothing;',

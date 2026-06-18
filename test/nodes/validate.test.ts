@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateOntology, createValidateNode } from '../../src/agent/nodes/05-validate.js';
+import { validateOntology, createValidateNode, warnCumulativeCommentPhrasing } from '../../src/agent/nodes/05-validate.js';
 import { routeAfterValidate } from '../../src/agent/graph.js';
 import { assembleOntology } from '../../src/agent/assemble.js';
 import { deriveRelationships } from '../../src/agent/nodes/03-relationship-link.js';
@@ -191,5 +191,40 @@ describe('createValidateNode', () => {
     const update = await node(state);
     expect(update.ontology).toBeTruthy();
     expect(update.validationErrors).toEqual([]);
+  });
+});
+
+describe('warnCumulativeCommentPhrasing (Part 2d)', () => {
+  const prop = (table: string, column: string, comment: string): ConceptCandidate => ({
+    source: { table, column }, ontologyKind: 'DatatypeProperty', prefLabel: column, altLabel: [], rdfsLabel: column, rdfsComment: comment,
+  });
+  const cls = (table: string): ConceptCandidate => ({ source: { table }, ontologyKind: 'Class', prefLabel: table, altLabel: [], rdfsLabel: table, rdfsComment: table });
+  const cumulative = fact('driverstandings', 'points', { temporality: 'cumulative-snapshot' });
+
+  it('warns when a cumulative-snapshot column is described with per-event phrasing', () => {
+    const ontology = assembleOntology(
+      [cls('driverstandings'), prop('driverstandings', 'points', 'Points awarded to the driver for this standing entry.')],
+      [], [], [cumulative],
+    );
+    const warnings = warnCumulativeCommentPhrasing(ontology, [cumulative]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('cumulative-comment-phrasing');
+  });
+
+  it('does not warn when the comment already frames it as a running total', () => {
+    const ontology = assembleOntology(
+      [cls('driverstandings'), prop('driverstandings', 'points', 'Cumulative championship points accumulated as of this race.')],
+      [], [], [cumulative],
+    );
+    expect(warnCumulativeCommentPhrasing(ontology, [cumulative])).toHaveLength(0);
+  });
+
+  it('ignores per-event phrasing on a column that is not tagged cumulative', () => {
+    const perEvent = fact('results', 'points', {}); // no temporality
+    const ontology = assembleOntology(
+      [cls('results'), prop('results', 'points', 'Points awarded for this race result.')],
+      [], [], [perEvent],
+    );
+    expect(warnCumulativeCommentPhrasing(ontology, [perEvent])).toHaveLength(0);
   });
 });

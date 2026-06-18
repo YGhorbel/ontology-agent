@@ -4,7 +4,7 @@ import { buildJoinGraph, resolveJoinPath } from '../../src/query/join-graph.js';
 import { intentToSql } from '../../src/query/intent-to-sql.js';
 import { QueryIntentSchema } from '../../src/types/query-intent.js';
 import { f1Index, ecommerceIndex, type GoldenCase } from '../fixtures/golden-questions.js';
-import type { OntologyIndex } from '../../src/query/ontology-index.js';
+import type { OntologyIndex, ColumnInfo, CapabilityInfo } from '../../src/query/ontology-index.js';
 
 function planFor(index: OntologyIndex, tables: string[]): ReturnType<typeof resolveJoinPath> {
   const graph = buildJoinGraph(index.joinEdges);
@@ -84,5 +84,58 @@ describe('intentToSql', () => {
     const { sql, warnings } = intentToSql(intent, planFor(f1Index, ['drivers']), f1Index);
     expect(sql).toMatch(/SELECT \*/);
     expect(warnings.some((w) => w.includes('SELECT *'))).toBe(true);
+  });
+});
+
+describe('intentToSql — cumulative & provenance awareness (ontology-signal wiring)', () => {
+  const col = (o: Partial<ColumnInfo>): ColumnInfo => ({ column: 'points', prefLabel: 'Points', altLabel: [], comment: '', ...o });
+  /** Minimal index carrying just the columns + capabilities intentToSql reads. */
+  const makeIndex = (columns: Record<string, ColumnInfo[]>, capabilities: CapabilityInfo[] = []): OntologyIndex => ({
+    classes: new Map(),
+    columnsByTable: new Map(Object.entries(columns)),
+    capabilities,
+    joinEdges: [],
+  });
+  const measureIntent = (table: string, column: string, capability?: string) =>
+    QueryIntentSchema.parse({
+      question: 'q', tables: [table],
+      measures: [{ table, column, ...(capability ? { capability } : {}) }],
+      groupDims: [], filters: [], ambiguities: [], unresolved: [],
+    });
+  const singleTablePlan = (t: string) => ({ anchorTable: t, clauses: [], unreachable: [], lowConfidence: false, fanOut: false });
+
+  it('aggregates a cumulative-snapshot column with MAX, not SUM, and warns on the grain', () => {
+    const index = makeIndex({
+      driverstandings: [col({ column: 'points', temporality: 'cumulative-snapshot', temporalityEvidence: { partitionColumns: ['driverid', 'year'], orderColumn: 'round', ratio: 1 } })],
+    });
+    const { sql, warnings } = intentToSql(measureIntent('driverstandings', 'points'), singleTablePlan('driverstandings'), index);
+    expect(sql).toMatch(/MAX\(driverstandings\.points\)/);
+    expect(sql).not.toMatch(/SUM\(driverstandings\.points\)/);
+    expect(warnings.some((w) => w.includes('cumulative snapshot') && w.includes('driverid, year') && w.includes('round'))).toBe(true);
+  });
+
+  it('still uses SUM for a plain (non-cumulative) numeric measure', () => {
+    const index = makeIndex({ results: [col({ column: 'points' })] });
+    const { sql, warnings } = intentToSql(measureIntent('results', 'points'), singleTablePlan('results'), index);
+    expect(sql).toMatch(/SUM\(results\.points\)/);
+    expect(warnings.some((w) => w.includes('cumulative'))).toBe(false);
+  });
+
+  it('warns when a measure relies on an LLM-inferred (unvalidated) metric formula', () => {
+    const index = makeIndex(
+      { results: [col({ column: 'points' })] },
+      [{ kind: 'metric', scopeTable: 'results', scopeColumn: 'points', prefLabel: 'total points', altLabel: [], formulaHint: 'SUM(results.points)', provenance: 'llm' }],
+    );
+    const { warnings } = intentToSql(measureIntent('results', 'points', 'total points'), singleTablePlan('results'), index);
+    expect(warnings.some((w) => w.includes('total points') && w.includes('not dry-run-validated'))).toBe(true);
+  });
+
+  it('does not warn for a validated (llm-validated) metric formula', () => {
+    const index = makeIndex(
+      { results: [col({ column: 'points' })] },
+      [{ kind: 'metric', scopeTable: 'results', scopeColumn: 'points', prefLabel: 'total points', altLabel: [], formulaHint: 'SUM(results.points)', provenance: 'llm-validated' }],
+    );
+    const { warnings } = intentToSql(measureIntent('results', 'points', 'total points'), singleTablePlan('results'), index);
+    expect(warnings.some((w) => w.includes('not dry-run-validated'))).toBe(false);
   });
 });

@@ -234,7 +234,10 @@ Declared catalog FKs always win (`provenance: declared`, `confidence: 1`).
   constraints at all** won't name-recover (the gate has nothing to match); declared PKs are
   near-universal, but this is the one schema shape where recall regresses.
 - **Composite (multi-column) foreign keys** are recovered only in the *bounded* 2-column case
-  (Fix 7 — sibling fact tables sharing ≥2 FK parents); general n-ary FK discovery is out of scope.
+  (Fix 7 — sibling fact tables sharing ≥2 *trusted* FK parents whose target pair is a real
+  composite key); general n-ary FK discovery is out of scope. Recall is deliberately traded for
+  precision: a genuine composite whose target pair never surfaced as a key candidate is skipped
+  rather than guessed.
 - **Confidence numbers are heuristic**, not probabilities — they rank edges, they don't
   calibrate to a true likelihood.
 
@@ -296,8 +299,11 @@ stores) aren't fed value-overlap noise as first-class facts:
 
 Every build carries an `owl:Ontology` **header**: a per-database base IRI, `owl:versionInfo`
 (`qsl/v2` + generator semver + monotonic build number), `dcterms:created`, a
-`qsl:sourceFingerprint` (sha256 of DSN host+db+schema — never credentials), and the `ONTOLOGY_*`
-knob values used. Uniqueness is now provenance-tagged: `qsl:isUnique` for constraint-backed
+`qsl:sourceFingerprint` (sha256 of DSN host+db+schema — never credentials), and the **resolved**
+`ONTOLOGY_*` knob values (`qsl:knobs`). Each knob records the concrete value the build applied —
+the explicit env value when set, otherwise the applied default with a `(default)` decoration
+(e.g. `ONTOLOGY_IND_MIN_CONTAINMENT=0.7 (default)`) — so a run is reproducible without knowing the
+generator's internal fallbacks. Uniqueness is now provenance-tagged: `qsl:isUnique` for constraint-backed
 (declared PK/UNIQUE) columns, `qsl:observedUnique` for profiling-observed uniqueness (e.g.
 `races.date` — unique in this snapshot, not guaranteed). **Output shape version: `qsl/v2`**
 (breaking change vs `qsl/v1`: relationship tiering, header, observed-vs-declared uniqueness).
@@ -317,18 +323,61 @@ knob values used. Uniqueness is now provenance-tagged: `qsl:isUnique` for constr
   dry-run, temporality) is upgraded to `llm-validated` with `qsl:validationEvidence`. With the
   dry-run disabled it stays `llm` (can't be certified).
 
+### Cumulative-measure tagging (Fix 3)
+
+A *cumulative snapshot* (`driverstandings.points`, `constructorstandings.wins`) is a running total
+carried event to event, so `SUM` double-counts — `MAX`/last-value-per-group is correct. Detection
+([`monotonicity.ts`](../src/profiling/monotonicity.ts), in ①b) joins the calendar table and probes
+whether the measure is monotonic non-decreasing along the sequence, within each
+`(entity, season)` partition, for ≥ `ONTOLOGY_MONOTONIC_MIN_RATIO` of rows.
+
+- **Partition columns are derived, never name-matched.** They are exactly the source columns of
+  the table's **trusted** unary FKs (the entity/dimension keys — declared, `inferred-name`, or
+  discovered ≥ `ONTOLOGY_EXPORT_MIN_CONF`) plus the season/year column from the calendar table.
+  Ordinal/measure columns of the table itself (`position`, `stop`, `lap`, `wins`, `points`…) never
+  enter the partition: a coincidental discovered FK on such a column would over-partition the
+  series and let a non-cumulative measure look monotonic.
+- **Evidence is structured.** `qsl:temporalityEvidence` is an object
+  `{ partitionColumns, orderColumn, ratio }` (not prose). In Turtle it is serialized as a single
+  JSON string literal on that annotation property; consumers `JSON.parse` it.
+- The node ② concept prompt is told which columns are cumulative, so the generated comment
+  describes a *running total to date* rather than a *per-event award*; node ⑤ additionally **warns**
+  (does not fail) when a tagged column's comment still uses per-event phrasing.
+
 ### Bounded composite join paths (Fix 7)
 
 Some joins need two keys at once — `laptimes(raceid, driverid) → results(raceid, driverid)`.
 The ontology has each *unary* FK but no direct edge between the two fact tables, so a query like
 "lap time per constructor" detours through a shared dimension and silently fans out. Composite-FK
-discovery ([`composite-fk.ts`](../src/profiling/composite-fk.ts), in ①b) recovers the direct edge,
-**strictly bounded**: only table pairs already sharing ≥2 unary FK parents, only 2-column
-combinations, the target side must be an approximate key (the more-unique side, ≥0.99 distinct),
-tables above `ONTOLOGY_COMPOSITE_MAX_ROWS` are skipped, and the 2-column inclusion dependency is
-verified with one containment scan (`ONTOLOGY_IND_MIN_CONTAINMENT`). The edge carries
-`qsl:compositeJoin true` + `qsl:joinFromColumns`/`qsl:joinToColumns` arrays, and the join-graph
-resolver prefers it over a 2-hop unary detour when both keys are needed.
+discovery ([`composite-fk.ts`](../src/profiling/composite-fk.ts), in ①b) recovers the direct edge.
+
+The hard part is **precision**: small overlapping integers (`position`, `stop`, `round`, `lap`)
+satisfy approximate inclusion dependencies, so a containment scan *alone* manufactures dozens of
+garbage edges (`pitstops.stop ⊆ constructorstandings.position`, `circuits(circuitid,circuitid) →
+…`). A candidate composite `A.[x,y] → B.[u,v]` is therefore formed **only** when all four
+preconditions hold, checked *before* any scan:
+
+1. **Distinct columns on both sides** — `x ≠ y` and `u ≠ v`. No column is doubled as a "pair"
+   (kills the `(circuitid, circuitid)` class outright).
+2. **Per-column trusted-unary prerequisite** — `x↔u` and `y↔v` are each a *co-reference*: both
+   tables hold a **trusted** unary FK (declared, `inferred-name`, or discovered with
+   `confidence ≥ ONTOLOGY_EXPORT_MIN_CONF`) into the **same parent column**, and the two
+   correspondences reach **two distinct parents**. A low-confidence (≤0.05) value-overlap edge
+   does not qualify (kills `(raceid, stop) → (raceid, position)` — `stop→position` is not trusted).
+3. **Real composite key on the target** — `(u, v)` is a discovered or declared **2-distinct-column
+   unique key** on `B` (from Step-2 key discovery) — not a single unique column doubled, not merely
+   "`u` is the PK". This also fixes the join *direction* (the keyed side is the parent).
+4. **Non-redundancy** — neither `u` nor `v` is individually unique on `B`; otherwise a unary FK
+   already determines the parent row and the composite duplicates it (kills `results(constructorid,
+   constructorid) → constructors`).
+
+Surviving candidates are then bounded as before: tables above `ONTOLOGY_COMPOSITE_MAX_ROWS` are
+skipped, and the 2-column inclusion dependency is verified with one containment scan
+(`ONTOLOGY_IND_MIN_CONTAINMENT`); the discovery runs once in ①b. Rules 1–4 are pure functions of
+profiling state (the trusted-FK graph + key candidates), so only genuine survivors pay a DB probe.
+The edge carries `qsl:compositeJoin true` + `qsl:joinFromColumns`/`qsl:joinToColumns` arrays, and
+the join-graph resolver prefers it over a 2-hop unary detour when both keys are needed. "Trusted
+unary FK" is the shared notion in [`trusted-fk.ts`](../src/profiling/trusted-fk.ts).
 
 ---
 

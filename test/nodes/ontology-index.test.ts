@@ -26,9 +26,16 @@ function sampleOntology() {
   ];
   const caps: Capability[] = [
     { kind: 'factTable', scope: { class: classIri('results') }, altLabel: ['fact'], provenance: 'llm' },
+    {
+      kind: 'metric', scope: { class: classIri('results'), property: 'points' }, prefLabel: 'total points', altLabel: [],
+      formulaHint: 'SUM(results.points)', provenance: 'llm-validated', validationEvidence: ['parse', 'bind', 'type', 'dry-run'],
+    },
   ];
   const columnFacts = [
-    { table: 'results', column: 'points', dataType: 'integer', isNumericText: false, isUnique: false, isPrimaryKey: false, distinctCount: 26, nullable: false, sampleValues: [] },
+    {
+      table: 'results', column: 'points', dataType: 'integer', isNumericText: false, isUnique: false, isPrimaryKey: false, distinctCount: 26, nullable: false, sampleValues: [],
+      temporality: 'cumulative-snapshot' as const, temporalityEvidence: { partitionColumns: ['constructorid'], orderColumn: 'raceid', ratio: 1 },
+    },
     { table: 'constructors', column: 'name', dataType: 'text', isNumericText: false, isUnique: true, isPrimaryKey: false, distinctCount: 3, nullable: false, sampleValues: ['Alpha', 'Beta', 'Gamma'] },
   ];
   return assembleOntology(concepts, relationships, caps, columnFacts);
@@ -81,5 +88,17 @@ describe('buildOntologyIndex', () => {
     expect(points?.altLabel).toEqual(['score', 'tally']);
     const fact = index.capabilities.find((c) => c.kind === 'factTable');
     expect(fact?.altLabel).toEqual(['fact']);
+  });
+
+  it('surfaces cumulative temporality + structured evidence onto ColumnInfo', () => {
+    const points = index.columnsByTable.get('results')?.find((c) => c.column === 'points');
+    expect(points?.temporality).toBe('cumulative-snapshot');
+    expect(points?.temporalityEvidence).toEqual({ partitionColumns: ['constructorid'], orderColumn: 'raceid', ratio: 1 });
+  });
+
+  it('surfaces capability provenance + validationEvidence onto CapabilityInfo', () => {
+    const metric = index.capabilities.find((c) => c.kind === 'metric');
+    expect(metric?.provenance).toBe('llm-validated');
+    expect(metric?.validationEvidence).toEqual(['parse', 'bind', 'type', 'dry-run']);
   });
 });

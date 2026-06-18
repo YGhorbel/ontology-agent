@@ -54,7 +54,15 @@ function renderColumn(c: ColumnInfo): string {
   const pk = c.isPrimaryKey ? ' PK' : '';
   const label = c.prefLabel && c.prefLabel.toLowerCase() !== c.column.toLowerCase() ? ` "${c.prefLabel}"` : '';
   const samples = c.sampleValues && c.sampleValues.length > 0 ? ` [${c.sampleValues.slice(0, MAX_SAMPLES).join(', ')}]` : '';
-  return `${c.column}${pk}${label}${samples}`;
+  // Cumulative-snapshot columns are running totals: SUMming them double-counts. Tell the LLM the
+  // safe aggregation (last value per the stated partition, ordered by the sequence column).
+  let cumulative = '';
+  if (c.temporality === 'cumulative-snapshot') {
+    const ev = c.temporalityEvidence;
+    const grain = ev ? ` (last value per ${ev.partitionColumns.join('+')} by ${ev.orderColumn})` : '';
+    cumulative = ` ~cumulative${grain}`;
+  }
+  return `${c.column}${pk}${label}${samples}${cumulative}`;
 }
 
 /** Tables one foreign-key hop from `table` (either direction). */
@@ -127,14 +135,20 @@ function renderGrounding(tables: string[], index: OntologyIndex, intent?: QueryI
     for (const m of metrics) {
       const formula = m.formulaHint ?? `(${m.scopeTable}.${m.scopeColumn ?? ''})`;
       const dir = m.preferredDirection ? ` [${m.preferredDirection} is better]` : '';
-      parts.push(`- "${m.prefLabel ?? m.scopeColumn ?? m.scopeTable}" = ${formula}${dir}`);
+      // Provenance tier: a dry-run-validated metric is trustworthy; an LLM-inferred one is a guess.
+      const trust = m.provenance === 'llm-validated' ? ' [validated]' : m.provenance === 'llm' ? ' [llm-inferred — verify]' : '';
+      parts.push(`- "${m.prefLabel ?? m.scopeColumn ?? m.scopeTable}" = ${formula}${dir}${trust}`);
     }
   }
 
   // Foreign keys as a REFERENCE — join only the tables actually needed, never all of them.
   const edges = index.joinEdges.filter((e) => tset.has(e.fromTable) && tset.has(e.toTable));
   if (edges.length > 0) {
-    parts.push('', 'Foreign keys (join ONLY the tables you need to answer — do NOT join a table whose columns you do not use):');
+    parts.push(
+      '',
+      'Foreign keys (join ONLY the tables you need to answer — do NOT join a table whose columns you do not use;',
+      'a one-to-many or many-to-many hop MULTIPLIES rows and corrupts aggregates, many-to-one / one-to-one are safe):',
+    );
     for (const e of edges) {
       const extra = (e.extraColumns ?? []).map((x) => ` AND ${e.fromTable}.${x.from} = ${e.toTable}.${x.to}`).join('');
       parts.push(`- ${e.fromTable}.${e.fromColumn} = ${e.toTable}.${e.toColumn}${extra} (${e.cardinality})`);

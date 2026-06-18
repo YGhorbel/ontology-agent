@@ -113,6 +113,17 @@ describe('buildOntologyHeader (Fix 6)', () => {
     expect(JSON.stringify(header)).not.toContain('s3cr3t');
     expect(header['qsl:knobs']).toContain('ONTOLOGY_EXPORT_MIN_CONF=0.5');
   });
+
+  it('Part 2c: records RESOLVED knob values, with (default) when unset', () => {
+    const h = buildOntologyHeader({
+      datasourceId: 'formula1', dsn: 'postgresql://dev@localhost/formula1', schemaList: ['public'],
+      generatorVersion: '0.1.0', buildNumber: 1, createdIso: '2026-06-11T00:00:00.000Z',
+      env: { ONTOLOGY_EXPORT_MIN_CONF: '0.8' } as NodeJS.ProcessEnv,
+    });
+    expect(h['qsl:knobs']).toContain('ONTOLOGY_EXPORT_MIN_CONF=0.8'); // explicit, no (default)
+    expect(h['qsl:knobs']).toContain('ONTOLOGY_IND_MIN_CONTAINMENT=0.7 (default)'); // resolved fallback
+    expect(h['qsl:knobs']).not.toContain('=default'); // never the bare word
+  });
 });
 
 describe('uniqueness provenance (Fix 6)', () => {
@@ -146,5 +157,23 @@ describe('uniqueness provenance (Fix 6)', () => {
     expect(raceid['qsl:observedUnique']).toBeUndefined();
     expect(date['qsl:observedUnique']).toBe(true);
     expect(date['qsl:isUnique']).toBeUndefined();
+  });
+
+  it('Part 2b: emits structured temporalityEvidence (object, not prose)', () => {
+    const concepts: ConceptCandidate[] = [
+      cls('driverstandings'),
+      { source: { table: 'driverstandings', column: 'points' }, ontologyKind: 'DatatypeProperty', prefLabel: 'Points', altLabel: [], rdfsLabel: 'Points', rdfsComment: 'cumulative points to date' },
+    ];
+    const facts = [
+      fact('driverstandings', 'points', {
+        dataType: 'real',
+        temporality: 'cumulative-snapshot',
+        temporalityEvidence: { partitionColumns: ['driverid', 'year'], orderColumn: 'round', ratio: 1 },
+      }),
+    ];
+    const graph = assembleOntology(concepts, [], [], facts)['@graph'];
+    const points = graph.find((n) => n['@type'] === 'owl:DatatypeProperty' && n['qsl:mapsToColumn'] === 'points') as Record<string, unknown>;
+    expect(points['qsl:temporality']).toBe('cumulative-snapshot');
+    expect(points['qsl:temporalityEvidence']).toEqual({ partitionColumns: ['driverid', 'year'], orderColumn: 'round', ratio: 1 });
   });
 });

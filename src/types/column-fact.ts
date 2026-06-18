@@ -44,7 +44,14 @@ export const ColumnFactSchema = z.object({
   // --- Temporality (Fix 3; set by the monotonicity probe in node 1b) ---
   /** Cumulative running-total measure → SUM double-counts; use MAX / last-value-per-group. */
   temporality: z.enum(['cumulative-snapshot']).optional(),
-  /** String evidence: partition/order columns + observed monotonic ratio. */
-  temporalityEvidence: z.string().optional(),
+  /** Structured evidence: the partition (entity + season) columns, the sequence order column,
+   *  and the observed monotonic-non-decreasing ratio that earned the tag (Part 2b). */
+  temporalityEvidence: z
+    .object({
+      partitionColumns: z.array(z.string()),
+      orderColumn: z.string(),
+      ratio: z.number(),
+    })
+    .optional(),
 });
 export type ColumnFact = z.infer<typeof ColumnFactSchema>;

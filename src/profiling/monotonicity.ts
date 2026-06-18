@@ -21,6 +21,7 @@ import type { Queryable } from '../storage/pg.js';
 import type { CanonicalSchema, Table } from '../types/canonical-schema.js';
 import type { ColumnProfile } from '../types/column-profile.js';
 import type { ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
+import { trustedUnaryFks } from './trusted-fk.js';
 
 const quoteIdent = (id: string): string => `"${id.replace(/"/g, '""')}"`;
 
@@ -53,11 +54,18 @@ export function isCalendarTable(t: Table): boolean {
   return hasSeason && hasOrder;
 }
 
-/** Entity FK source columns of a table (declared ∪ discovered), excluding a given column. */
+/**
+ * Entity (partition) columns of a table: source columns of its TRUSTED unary FKs only
+ * (declared / inferred-name / discovered ≥ EXPORT_MIN_CONF), excluding the sequence-join
+ * column. Restricting to trusted FKs is what keeps a coincidental discovered FK on an
+ * ordinal/measure column (e.g. `position ⊆ constructorid`) OUT of the partition — over-
+ * partitioning by such a column fragments the per-entity series and would let a non-
+ * cumulative measure look monotonic (Part 2a). A trusted FK target is the deterministic,
+ * pre-capability proxy for an "entity/dimension" key here in node 1b.
+ */
 function entityFkColumns(table: string, schema: CanonicalSchema, fks: ForeignKeyCandidate[], exclude: string): string[] {
   const cols = new Set<string>();
-  for (const fk of schema.foreignKeys) if (fk.sourceTable === table) cols.add(fk.sourceColumn);
-  for (const fk of fks) if (fk.kind === 'foreign-key' && fk.sourceTable === table && fk.sourceColumn) cols.add(fk.sourceColumn);
+  for (const fk of trustedUnaryFks(schema, fks)) if (fk.sourceTable === table) cols.add(fk.sourceColumn);
   cols.delete(exclude);
   return [...cols];
 }
@@ -115,11 +123,6 @@ export function buildMonotonicQuery(table: string, measure: string, plan: Sequen
     `SELECT ${m} - lag(${m}) OVER (PARTITION BY ${partition} ORDER BY r.${quoteIdent(plan.orderColumn)}) AS d ` +
     `FROM ${quoteIdent(table)} t JOIN ${quoteIdent(plan.joinTable)} r ON t.${quoteIdent(plan.joinFromColumn)} = r.${quoteIdent(plan.joinToColumn)}) s`
   );
-}
-
-/** Human evidence string for `qsl:temporalityEvidence`. */
-export function temporalityEvidenceString(e: TemporalityEvidence): string {
-  return `cumulative along ${e.orderColumn} per (${e.partitionColumns.join(', ')}); monotonic ratio ${e.ratio.toFixed(3)}`;
 }
 
 /**

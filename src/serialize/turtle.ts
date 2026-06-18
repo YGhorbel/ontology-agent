@@ -75,7 +75,9 @@ function datatypeTurtle(n: Extract<GraphNode, { '@type': 'owl:DatatypeProperty' 
   if (n['qsl:sampleValues'] && n['qsl:sampleValues'].length > 0) preds.push(`qsl:sampleValues ${plainList(n['qsl:sampleValues'])}`);
   if (n['qsl:nullPlaceholder'] !== undefined) preds.push(`qsl:nullPlaceholder ${lit(n['qsl:nullPlaceholder'])}`);
   if (n['qsl:temporality'] !== undefined) preds.push(`qsl:temporality ${lit(n['qsl:temporality'])}`);
-  if (n['qsl:temporalityEvidence'] !== undefined) preds.push(`qsl:temporalityEvidence ${lit(n['qsl:temporalityEvidence'])}`);
+  // Structured evidence (Part 2b) is serialized to TTL as a single JSON string literal — RDF has
+  // no native record; consumers that need the parts JSON.parse this one annotation value.
+  if (n['qsl:temporalityEvidence'] !== undefined) preds.push(`qsl:temporalityEvidence ${lit(JSON.stringify(n['qsl:temporalityEvidence']))}`);
   return `${ref(n['@id'])} a owl:DatatypeProperty ;\n    ${preds.join(' ;\n    ')} .`;
 }
 

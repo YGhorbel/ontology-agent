@@ -12,7 +12,7 @@
  * tables, a low-confidence join, or an empty SELECT — are surfaced as `warnings`
  * rather than silently papered over.
  */
-import type { OntologyIndex } from './ontology-index.js';
+import type { OntologyIndex, ColumnInfo } from './ontology-index.js';
 import type { QueryIntent } from '../types/query-intent.js';
 import type { JoinPath } from '../types/query-plan.js';
 import { isNumericLiteral } from './text-normalize.js';
@@ -34,8 +34,28 @@ const slug = (s: string): string =>
 /** Quote a filter literal: bare for pure integers, single-quoted (escaped) otherwise. */
 const quoteLiteral = (v: string): string => (isNumericLiteral(v) ? v : `'${v.replace(/'/g, "''")}'`);
 
-/** The aggregate SELECT expression for a measure, from the capability formula when present. */
-function aggregateExpr(measure: QueryIntent['measures'][number], index: OntologyIndex): string {
+/** The aggregate SELECT expression for a measure, plus any caveats the caller should surface. */
+interface MeasureExpr {
+  sql: string;
+  /** Set when an ad-hoc aggregate fell back to MAX because the column is a cumulative snapshot. */
+  cumulativeColumn?: ColumnInfo;
+  /** Set when the measure relies on an LLM-inferred metric formula that was never dry-run-validated. */
+  unvalidatedMetric?: string;
+}
+
+/** Look up the ColumnInfo for a measure's column, if the ontology carries it. */
+function columnInfoOf(measure: QueryIntent['measures'][number], index: OntologyIndex): ColumnInfo | undefined {
+  return index.columnsByTable.get(measure.table)?.find((c) => c.column === measure.column);
+}
+
+/**
+ * The aggregate SELECT expression for a measure. A capability formula (already Fix-2/Fix-3
+ * validated at generation time) is used verbatim. Otherwise the default is `SUM`, EXCEPT for a
+ * column tagged `cumulative-snapshot` — SUM of a running total double-counts, so we fall back to
+ * `MAX` (the ontology's documented safe default) and let the caller warn that last-value-per-group
+ * is the precise grain.
+ */
+function aggregateExpr(measure: QueryIntent['measures'][number], index: OntologyIndex): MeasureExpr {
   const cap = index.capabilities.find(
     (c) =>
       c.kind === 'metric' &&
@@ -43,9 +63,18 @@ function aggregateExpr(measure: QueryIntent['measures'][number], index: Ontology
       c.scopeColumn === measure.column &&
       (measure.capability === undefined || c.prefLabel === measure.capability),
   );
-  const expr = cap?.formulaHint ?? `SUM(${measure.table}.${measure.column})`;
-  const alias = slug(cap?.prefLabel ?? measure.column);
-  return `${expr} AS ${alias}`;
+  if (cap?.formulaHint) {
+    const alias = slug(cap.prefLabel ?? measure.column);
+    // 'llm' provenance = the formula was inferred but never dry-run-validated (Fix 9 tiers).
+    const unvalidatedMetric = cap.provenance === 'llm' ? (cap.prefLabel ?? `${measure.table}.${measure.column}`) : undefined;
+    return { sql: `${cap.formulaHint} AS ${alias}`, ...(unvalidatedMetric ? { unvalidatedMetric } : {}) };
+  }
+  const col = columnInfoOf(measure, index);
+  const alias = slug(measure.column);
+  if (col?.temporality === 'cumulative-snapshot') {
+    return { sql: `MAX(${measure.table}.${measure.column}) AS ${alias}`, cumulativeColumn: col };
+  }
+  return { sql: `SUM(${measure.table}.${measure.column}) AS ${alias}` };
 }
 
 /**
@@ -60,7 +89,20 @@ export function intentToSql(intent: QueryIntent, joinPlan: JoinPath, index: Onto
   const projCols = intent.projection.map((p) => `${p.table}.${p.column}`);
   const nonAgg = [...dimCols, ...projCols];
   const measureExprs = intent.measures.map((m) => aggregateExpr(m, index));
-  const selectItems = [...nonAgg, ...measureExprs];
+  const selectItems = [...nonAgg, ...measureExprs.map((m) => m.sql)];
+
+  // Cumulative-snapshot measures: we substituted MAX for SUM — flag the precise grain (Fix 3 carried
+  // into the query layer). Unvalidated LLM metric formulas are flagged so callers can lower trust.
+  for (const m of measureExprs) {
+    if (m.cumulativeColumn) {
+      const ev = m.cumulativeColumn.temporalityEvidence;
+      const grain = ev ? ` — last value per (${ev.partitionColumns.join(', ')}) ordered by ${ev.orderColumn} is the precise grain` : '';
+      warnings.push(`${m.cumulativeColumn.column} is a cumulative snapshot; aggregated with MAX, not SUM${grain}`);
+    }
+    if (m.unvalidatedMetric) {
+      warnings.push(`metric "${m.unvalidatedMetric}" formula is LLM-inferred and was not dry-run-validated — verify before trusting`);
+    }
+  }
   let selectClause: string;
   if (selectItems.length === 0) {
     selectClause = '*';

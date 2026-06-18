@@ -139,8 +139,15 @@ const DatatypePropertyNodeSchema = z.object({
   'qsl:nullPlaceholder': z.string().optional(),
   /** Marks a measure whose values are cumulative running totals (SUM double-counts; use MAX/last-per-group). */
   'qsl:temporality': z.enum(['cumulative-snapshot']).optional(),
-  /** String evidence for the temporality tag: partition/order columns + observed monotonic ratio. */
-  'qsl:temporalityEvidence': z.string().optional(),
+  /** Structured evidence for the temporality tag (Part 2b): partition (entity+season) columns,
+   *  the sequence order column, and the observed monotonic ratio. */
+  'qsl:temporalityEvidence': z
+    .object({
+      partitionColumns: z.array(z.string()),
+      orderColumn: z.string(),
+      ratio: z.number(),
+    })
+    .optional(),
 });
 
 const ObjectPropertyNodeSchema = z.object({

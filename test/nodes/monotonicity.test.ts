@@ -57,6 +57,18 @@ describe('deriveSequencePlan', () => {
     expect(plan?.groupColumn).toBe('year');
     expect(plan?.orderColumn).toBe('round');
   });
+
+  it('Part 2a: excludes a low-confidence discovered FK on an ordinal column from the partition', () => {
+    // `position` IS-A ⊆ B coincidence the discoverer surfaces with a tiny score. Including it would
+    // over-partition the series and make a non-cumulative measure look monotonic. It must be dropped.
+    const noisyPositionFk: ForeignKeyCandidate = {
+      kind: 'foreign-key', sourceTable: 'driverstandings', sourceColumn: 'position', targetTable: 'drivers', targetColumn: 'driverid',
+      junctionTable: null, cardinality: 'many-to-many', verified: true, containmentRatio: 0.8, score: 0.05, declared: false, evidence: 'ind',
+      signals: { nameSimilarity: 0, surrogate: false, rhsReferences: 1 },
+    };
+    const plan = deriveSequencePlan(schema.tables[2]!, schema, [noisyPositionFk]);
+    expect(plan?.entityColumns).toEqual(['driverid']); // position excluded
+  });
 });
 
 describe('buildMonotonicQuery', () => {

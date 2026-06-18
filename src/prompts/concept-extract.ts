@@ -20,6 +20,9 @@ export const CONCEPT_EXTRACT_SYSTEM = [
   'of the sample values listed in the "Column profile facts" block for that column. Never invent example values.',
   'If a column has very few distinct values, describe it as that small enumeration. If a sentinel like \'-\', \'\'',
   "or 'N/A' appears in the samples, note it is used for unknown/missing rather than treating it as a real category.",
+  'A column flagged "CUMULATIVE" in the profile facts holds a running total as of that event (e.g. championship',
+  'points/wins standing after a race), NOT a per-event amount: describe it as a cumulative/running total to date,',
+  'never as the value "awarded for this race/entry".',
   'Return ONLY the requested structured output.',
 ].join(' ');
 
@@ -71,6 +74,9 @@ function formatProfileFacts(table: Table, facts: ColumnFact[]): string {
       parts.push(`samples: ${shown}`);
     }
     if (f.nullPlaceholder !== undefined) parts.push(`placeholder-for-unknown: '${f.nullPlaceholder}'`);
+    // Part 2d: temporality is computed in 1b before this prompt runs — tell the model so the
+    // generated comment describes a running/cumulative total, not a per-event award.
+    if (f.temporality === 'cumulative-snapshot') parts.push('CUMULATIVE (running total as-of-event; not a per-event amount)');
     return parts.join(' | ');
   });
   return lines.join('\n');

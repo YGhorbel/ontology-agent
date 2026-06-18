@@ -195,6 +195,38 @@ export function pruneCollidingAltLabels(ontology: OntologyJsonLd): string[] {
   return warnings;
 }
 
+/** Per-event phrasing ("X points awarded for this race/entry") on a measure column. */
+const PER_EVENT_PHRASING =
+  /\b(award(?:ed|s)?|earn(?:ed|s)?|gain(?:ed|s)?|scored|received)\b[^.]*\b(?:for|in|this|per|each)\b[^.]*\b(?:race|event|entry|round|standing)\b/i;
+/** Cumulative phrasing that, if present, means the comment already frames the value correctly. */
+const CUMULATIVE_PHRASING =
+  /\b(?:cumulative|running total|running tally|accumulat\w*|as of|to date|so far|season total|standings? total)\b/i;
+
+/**
+ * Part 2d — warn (do NOT fail) when a column tagged `cumulative-snapshot` is described with
+ * per-event phrasing ("points awarded for this race") instead of as a running total. This is a
+ * heuristic over free text, so a hard-fail retry loop would be brittle and could thrash on a
+ * stubborn LLM; the prompt already steers the wording, and this surfaces residual mismatches as
+ * warnings (origin: concept) without blocking the build. Returns one warning per offending column.
+ */
+export function warnCumulativeCommentPhrasing(ontology: OntologyJsonLd, columnFacts: ColumnFact[]): string[] {
+  const tagged = new Set<string>();
+  for (const f of columnFacts) if (f.temporality === 'cumulative-snapshot') tagged.add(`${lc(f.table)}.${lc(f.column)}`);
+  if (tagged.size === 0) return [];
+  const warnings: string[] = [];
+  for (const n of ontology['@graph']) {
+    if (n['@type'] !== 'owl:DatatypeProperty') continue;
+    if (!tagged.has(`${lc(n['qsl:mapsToTable'])}.${lc(n['qsl:mapsToColumn'])}`)) continue;
+    const comment = n['rdfs:comment'];
+    if (PER_EVENT_PHRASING.test(comment) && !CUMULATIVE_PHRASING.test(comment)) {
+      warnings.push(
+        `[cumulative-comment-phrasing] ${n['@id']}: "${comment}" describes a cumulative-snapshot column as a per-event amount — should read as a running/cumulative total`,
+      );
+    }
+  }
+  return warnings;
+}
+
 export function createValidateNode(connect?: SchemaConnector) {
   return async function validate(state: OntologyState): Promise<OntologyStateUpdate> {
     const { canonicalSchema, conceptCandidates, relationships, capabilities } = state;
@@ -206,6 +238,9 @@ export function createValidateNode(connect?: SchemaConnector) {
 
     // Fix 8: strip altLabels that collide with a different concept (soft — warn, don't fail).
     for (const w of pruneCollidingAltLabels(ontology)) console.warn(`[validate] ${w}`);
+
+    // Part 2d: warn (don't fail) on per-event phrasing for cumulative-snapshot columns.
+    for (const w of warnCumulativeCommentPhrasing(ontology, columnFacts)) console.warn(`[validate] ${w}`);
 
     const validationErrors = validateOntology(ontology, canonicalSchema, columnFacts);
 
