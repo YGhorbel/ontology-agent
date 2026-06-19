@@ -19,6 +19,7 @@
     "joinpath": "tsx src/cli/joinpath.ts",
     "link": "tsx src/cli/link.ts",
     "qwery": "tsx src/cli/qwery.ts",
+    "ask": "tsx scripts/ask.ts",
     "test": "vitest run --dir test/nodes",
     "test:unit": "vitest run --dir test/nodes",
     "test:e2e": "vitest run test/agent.test.ts",
