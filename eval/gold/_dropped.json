@@ -1,0 +1,37 @@
+{
+  "dropped": [
+    {
+      "id": "f1-bird-944",
+      "reason": "goldRows empty/[[null]]"
+    }
+  ],
+  "mismatch": {
+    "transpilation_artifacts_a": [
+      {
+        "id": "f1-bird-981",
+        "stored": [
+          [
+            2017,
+            "Chinese Grand Prix",
+            "2017-04-08T23:00:00.000Z",
+            "06:00:00"
+          ]
+        ],
+        "got": [
+          [
+            "2017",
+            "Chinese Grand Prix",
+            "2017-04-09",
+            "06:00:00"
+          ]
+        ],
+        "storedN": 1,
+        "gotN": 1,
+        "flags": [
+          "NULL_ORDER"
+        ]
+      }
+    ],
+    "gold_suspect_b": []
+  }
+}

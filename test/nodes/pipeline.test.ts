@@ -62,7 +62,7 @@ describe('Stage-4 pipeline — A. happy path (full chain to SQL)', () => {
     // S2: connected payload.
     expect(res.payload.disconnected).toBeFalsy();
     // S3a: capability measure chosen.
-    expect(res.ir.measures[0]?.capability).toBeDefined();
+    expect(res.ir.measures?.[0]?.capability).toBeDefined();
     // S3b: capability expanded + payload group/filter rendered verbatim.
     expect(res.sql).toContain('AVG(laptimes.milliseconds)');
     expect(res.sql).toContain('GROUP BY constructors.nationality');
