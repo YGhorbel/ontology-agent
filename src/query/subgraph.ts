@@ -111,13 +111,24 @@ interface MetaEdge {
   u: string;
   v: string;
   dist: number;
+  hops: number;
   iris: string;
   edges: JoinEdge[];
 }
 
-/** Deterministic ordering of meta-edges: distance, then ordered source-IRI list. */
+/**
+ * Deterministic ordering of meta-edges, as a lexicographic objective tuple:
+ *   1. distance (total path COST — primary; confidence/provenance weights win first),
+ *   2. hops (EDGE COUNT — secondary: prefer fewer joins among cost-tied paths; this is the
+ *      sole place tree cardinality is decided, since the metric-closure MST fixes the node
+ *      set and the final spanning tree then has nodes−1 edges regardless),
+ *   3. ordered source-IRI list (the existing lexicographic determinism tie-break).
+ * Node count is omitted: for a tree/simple path nodes = edges + 1, so `hops` subsumes it.
+ * Cardinality is a strictly secondary key — a costlier fewer-edge path NEVER beats a cheaper one.
+ */
 function metaLess(a: MetaEdge, b: MetaEdge): number {
   if (a.dist !== b.dist) return a.dist - b.dist;
+  if (a.hops !== b.hops) return a.hops - b.hops;
   return a.iris < b.iris ? -1 : a.iris > b.iris ? 1 : 0;
 }
 
@@ -253,7 +264,7 @@ export function extractSubgraph(
         disconnected = true;
         continue;
       }
-      metaEdges.push({ u, v, dist: info.cost, iris: info.iris.join('|'), edges: info.edges });
+      metaEdges.push({ u, v, dist: info.cost, hops: info.hops, iris: info.iris.join('|'), edges: info.edges });
     }
   }
 

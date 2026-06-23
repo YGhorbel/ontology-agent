@@ -52,6 +52,29 @@ component spanning all 13 classes**. Consequences, all asserted as the algorithm
 - **Test 6** (trim): the spec named `results`; the real winning tree routes through `qualifying`, so
   the trim assertion targets the `qualifying` bridge node.
 
+## Addendum (2026-06-23) — tie-break refinement: minimum-cost-then-minimum-cardinality
+The routing objective is now a lexicographic tuple: **(1) total edge cost — unchanged primary,
+(2) edge count — NEW, (3) the existing per-path lexicographic tie-break)**. Among cost-tied trees the
+one with fewer joins wins; cost stays strictly primary (a costlier fewer-edge tree never wins).
+
+**Finding that motivated it.** After pruning trims "drivers eliminated in Q1 in race 20" to terminals
+`{drivers, qualifying, races}`, Steiner still emitted a 3-join tree hubbed through `laptimes` — an
+*unnecessary* bridge, since declared FKs `qualifying→drivers` and `qualifying→races` give a 2-join
+laptimes-free tree. Both cost 0.00, so the old `(cost, lexicographic)` meta-edge order picked the
+worse one. This is the **4th time** the zero-cost spanning-subgraph property has driven a decision
+(H1 inert on intact F1; S3b test-4 forced uniform; the cumulative calendar-fold off-tree; now this):
+on a fully-declared schema declared FKs form a zero-cost connected subgraph, so cost cannot
+discriminate — the tie-break decides topology, which is why it must be a principled secondary
+objective.
+
+**Where it lives.** A single `hops` (edge-count) key inserted into `metaLess` (the metric-closure
+Kruskal ordering), below cost and above the lexicographic fallback. That is the *only* point with a
+cardinality degree of freedom: the meta-edge selection fixes the node set, and the final spanning
+tree then has `nodes − 1` edges regardless. `dijkstra`'s per-path comparator already carries `hops`;
+`mstOverEdges`/`pruneLeaves` span a fixed node set. Node count is omitted (for a tree `nodes =
+edges + 1`). Cost computation, weights, floors, and `aggregateConfidence=MIN` are untouched — only
+the comparison of cost-tied meta-edges changed. No knob (it is simply the correct objective).
+
 ## Consequences
 - Confidence-weighting is *inert* on a fully-declared, FK-complete schema (every route already ties
   at maximal trust). The weight function's empirical effect (H1) is observed on stripped /

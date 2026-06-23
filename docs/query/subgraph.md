@@ -43,7 +43,8 @@ weight to 1, turning the router into a pure hop-count minimiser. See
 1. `terminals.length ≤ 1` → trivial single-node payload, no routing.
 2. Dijkstra (cost = `edge.weight`) from each terminal → shortest path between every terminal pair.
 3. Any pair unreachable → `disconnected: true`, return the best partial **forest** (never throws).
-4. Complete graph on terminals (meta-edge = shortest-path distance); **Kruskal MST**.
+4. Complete graph on terminals (meta-edge = shortest-path distance); **Kruskal MST**, meta-edges
+   ordered by **cost, then edge count (fewer hops), then lexicographic** (see the objective below).
 5. Expand MST meta-edges back to real `JoinEdge`s, union, take an MST of the union to remove
    incidental cycles, then prune degree-1 non-terminal leaves → a tree.
 6. `bridgeNodes` = tree nodes that are not terminals.
@@ -60,8 +61,31 @@ because the ontology graph is tiny (tens of nodes) and the payload is consumed b
 cost-sensitive optimiser. `k`-best alternative trees (Yen's k-shortest) are reserved — `k > 1`
 throws today.
 
-### Tie-break (determinism; part of RULE C)
-Edge cost is the primary key. Among **equal-cost** paths a fixed order applies:
+### Objective: minimum-cost, then minimum-cardinality, then lexicographic
+The routing objective is a **lexicographic tuple**:
+
+1. **minimum total edge cost** — primary; confidence/provenance weights (RULE C) win first.
+2. **minimum edge count** (fewer joins) — secondary; consulted only on an exact cost tie. Node
+   count is *omitted* as a key because for a tree `nodes = edges + 1`, so edge count subsumes it.
+3. the existing per-path tie-break (below) for full determinism.
+
+Cost stays strictly primary: a cheaper tree with more edges still beats a costlier tree with fewer
+edges — a low-confidence shortcut is never preferred for being shorter. Only ties on cost fall
+through to cardinality.
+
+**Why this is needed (the zero-cost spanning-subgraph property).** On a fully-declared schema the
+declared FKs form a *zero-cost* connected subgraph, so cost alone cannot discriminate among valid
+trees — the tie-break decides the topology. Min-cardinality makes that choice principled: e.g. the
+pruned terminals `{drivers, qualifying, races}` route the 2-edge `qualifying→drivers +
+qualifying→races` tree instead of the cost-equal 3-edge tree that needlessly hubbed through
+`laptimes`. This is the 4th manifestation of the property (see the [H1 note](../experiments/h1-join-routing.md)).
+
+The cardinality key lives at exactly **one** point — the metric-closure meta-edge ordering
+(`metaLess`) — because that selection fixes the tree's node set; the final spanning tree then has
+`nodes − 1` edges regardless, so there is no further cardinality freedom downstream.
+
+### Per-path tie-break (determinism; part of RULE C)
+Within a single shortest path, among **equal-cost** paths a fixed order applies:
 1. higher min-confidence along the path, then
 2. fewer hops, then
 3. fewer composite edges, then

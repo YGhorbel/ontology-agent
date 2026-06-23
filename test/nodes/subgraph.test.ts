@@ -170,6 +170,69 @@ describe('Stage 2 — no candidate leakage', () => {
   });
 });
 
+describe('Stage 2 — min-cost-then-min-cardinality tie-break', () => {
+  // The canonical pruning output {drivers, qualifying, races} is a 3-way cost-0 tie: a 2-edge
+  // laptimes-free tree (qualifying→drivers + qualifying→races) and a 3-edge laptimes-hub tree
+  // both cost 0. Before this brick the lexicographic tie-break picked the 3-edge laptimes tree;
+  // min-cardinality now prefers the smaller one.
+  it('7. canonical tie resolves to the 2-edge laptimes-free tree', () => {
+    const graph = buildGraph(raw);
+    const p = extractSubgraph(graph, [iri('drivers'), iri('qualifying'), iri('races')], [], caps);
+
+    expect(p.totalCost).toBe(0);
+    expect(p.joins.length).toBe(2); // was 3 (laptimes hub) before the tie-break refinement
+    expect(p.bridgeNodes).toEqual([]); // all three are terminals; no bridge needed
+    const nodes = new Set(p.classes.map((c) => c.iri));
+    expect(nodes.has(iri('laptimes'))).toBe(false); // the unnecessary bridge is gone
+    // Exactly the two qualifying FKs, canonical (FK side = domain) orientation.
+    expect(new Set(p.joins.map(joinKey))).toEqual(
+      new Set([
+        joinKey({ from: iri('qualifying'), to: iri('drivers'), on: [['driverid', 'driverid']] }),
+        joinKey({ from: iri('qualifying'), to: iri('races'), on: [['raceid', 'raceid']] }),
+      ]),
+    );
+  });
+
+  it('8. cost still dominates cardinality: the cheaper 2-edge tree beats the costlier 1-edge composite', () => {
+    // {laptimes, driverstandings}: confidence mode has a 1-edge discovered composite (cost ≈0.044)
+    // and a 2-edge all-declared detour (cost 0). Fewer edges, but costlier ⇒ must NOT win.
+    const conf = extractSubgraph(buildGraph(raw), [iri('laptimes'), iri('driverstandings')], [], caps);
+    expect(conf.totalCost).toBe(0);
+    expect(conf.joins.length).toBe(2); // the cheaper, MORE-edge tree
+    expect(conf.bridgeNodes).toEqual([iri('drivers')]);
+    for (const j of conf.joins) {
+      expect(j.provenance).toBe('declared');
+      expect(j.on.length).toBe(1); // no composite shortcut taken
+    }
+  });
+
+  it('9. determinism preserved: cost- AND cardinality-tied trees fall through to the lexicographic key', () => {
+    // {laptimes, constructors} confidence: two cost-0, 3-edge trees (via {drivers,qualifying} vs
+    // {drivers,results}). Equal cost AND equal edge count → lexicographic decides, stably.
+    const a = extractSubgraph(buildGraph(raw), [iri('laptimes'), iri('constructors')], [], caps);
+    const b = extractSubgraph(buildGraph(raw), [iri('laptimes'), iri('constructors')], [], caps);
+    expect(a.bridgeNodes).toEqual([iri('drivers'), iri('qualifying')]);
+    expect(b.bridgeNodes).toEqual(a.bridgeNodes); // identical across runs
+  });
+
+  it('10. regression: a genuinely-cheapest larger tree is still kept (min-card never overrides cost)', () => {
+    // Same {laptimes, constructors} case: the 3-edge cost-0 tree is cheaper than any 2-edge route
+    // (the only 2-edge route uses the discovered composite, cost >0), so it must survive unchanged.
+    const p = extractSubgraph(buildGraph(raw), [iri('laptimes'), iri('constructors')], [], caps);
+    expect(p.totalCost).toBe(0);
+    expect(p.joins.length).toBe(3);
+    expect(p.bridgeNodes).toEqual([iri('drivers'), iri('qualifying')]);
+  });
+
+  it('11. a necessary bridge is still added (smallest CONNECTED tree, not smallest edge set)', () => {
+    // drivers and races share no direct FK (2 hops apart) → exactly one bridge is unavoidable.
+    const p = extractSubgraph(buildGraph(raw), [iri('drivers'), iri('races')], [], caps);
+    expect(p.disconnected).toBeFalsy();
+    expect(p.joins.length).toBe(2);
+    expect(p.bridgeNodes.length).toBe(1); // a bridge IS added — pruning edges never disconnects
+  });
+});
+
 describe('Stage 2 — single-terminal no-op + payload trimming', () => {
   it('6. {races} is a one-node no-op; bridge node columns are trimmed to join keys only', () => {
     const graph = buildGraph(raw);
