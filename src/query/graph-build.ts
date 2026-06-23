@@ -64,7 +64,10 @@ function columnPropOf(n: Record<string, unknown>): ColumnProp {
   if (n['qsl:isPrimaryKey'] !== undefined) prop.isPrimaryKey = n['qsl:isPrimaryKey'] as boolean;
   if (n['qsl:isUnique'] !== undefined) prop.isUnique = n['qsl:isUnique'] as boolean;
   if (n['qsl:observedUnique'] !== undefined) prop.observedUnique = n['qsl:observedUnique'] as boolean;
+  if (n['qsl:isNumericText'] !== undefined) prop.isNumericText = n['qsl:isNumericText'] as boolean;
   if (n['qsl:temporality'] !== undefined) prop.temporality = n['qsl:temporality'] as string;
+  if (n['qsl:temporalityEvidence'] !== undefined)
+    prop.temporalityEvidence = n['qsl:temporalityEvidence'] as ColumnProp['temporalityEvidence'];
   if (n['qsl:sampleValues'] !== undefined) prop.sampleValues = n['qsl:sampleValues'] as string[];
   return prop;
 }
@@ -185,6 +188,8 @@ export function loadCapabilities(raw: unknown): CapabilityRef[] {
     };
     if (rec['qsl:scopeProperty'] !== undefined) ref.scopeProperty = rec['qsl:scopeProperty'] as string;
     if (rec['skos:prefLabel'] !== undefined) ref.prefLabel = rec['skos:prefLabel'] as string;
+    if (rec['qsl:formulaHint'] !== undefined) ref.formulaHint = rec['qsl:formulaHint'] as string;
+    if (rec['qsl:unit'] !== undefined) ref.unit = rec['qsl:unit'] as string;
     out.push(ref);
   }
   return out;

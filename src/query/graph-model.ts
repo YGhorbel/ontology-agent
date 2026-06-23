@@ -16,8 +16,17 @@ export interface ColumnProp {
   isPrimaryKey?: boolean;
   isUnique?: boolean;
   observedUnique?: boolean;
+  /** Text column whose values parse as numbers — the SQL layer must CAST before aggregating/comparing. */
+  isNumericText?: boolean;
   /** Cumulative running-total tag — the SQL layer aggregates such columns with MAX, not SUM. */
   temporality?: string;
+  /**
+   * Grain that justifies the cumulative tag: partition (entity + season) + within-season order.
+   * Carried so Stage 3b can de-cumulate (snapshot-at-max-order per partition). Partition/order
+   * columns may live on a CALENDAR table reached by a declared FK (e.g. races.year / races.round),
+   * not on the measure table itself.
+   */
+  temporalityEvidence?: { partitionColumns: string[]; orderColumn: string; ratio: number };
   /** Enum/profile sample values; truncated to 15 in the payload for terminal classes. */
   sampleValues?: string[];
 }
@@ -62,6 +71,10 @@ export interface CapabilityRef {
   scopeClass: string;
   scopeProperty?: string;
   prefLabel?: string;
+  /** Pre-validated SQL aggregate (e.g. `AVG(laptimes.milliseconds)`); the compiler expands it verbatim. */
+  formulaHint?: string;
+  /** Unit of the metric result (e.g. `ms`, `points`) — carried for the certificate/trace. */
+  unit?: string;
 }
 
 /** The Stage-3 contract: a trimmed, self-contained description of the chosen subgraph. */
