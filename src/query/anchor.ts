@@ -92,7 +92,7 @@ export function anchorQuestion(question: string, index: AnchorIndex, opts: Ancho
       const prev = bestByIri.get(e.iri);
       if (prev && prev.anchor.score >= score) continue;
       bestByIri.set(e.iri, {
-        anchor: { kind: e.kind, iri: e.iri, matchedText: spanText, via: e.via, score },
+        anchor: { kind: e.kind, iri: e.iri, scopeClassIri: e.scopeClassIri, matchedText: spanText, via: e.via, score },
         scopeClassIri: e.scopeClassIri,
       });
     }

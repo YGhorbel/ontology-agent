@@ -17,6 +17,7 @@ import { buildAnchorIndex } from '../src/query/anchor-index.js';
 import { buildGraph, loadCapabilities } from '../src/query/graph-build.js';
 import { makeRealLlm } from '../src/llm/client.js';
 import { runPipeline, type PipelineDeps } from '../src/query/pipeline.js';
+import type { PruneTrace } from '../src/query/prune.js';
 
 const FIXTURE = resolve(process.cwd(), 'eval/fixtures/ontologies/formula1-1781704520.jsonld');
 const short = (iri: string): string => iri.replace(/^qsl:class\//, '');
@@ -65,6 +66,7 @@ async function main(): Promise<void> {
 
   if (res.ok) {
     console.log('terminals :', res.anchorSet.terminals.map(short).join(', '));
+    printPrune(res.traces.prune);
     console.log('payload   :', res.payload.classes.map((c) => short(c.iri)).join(', '), `(cost ${res.payload.totalCost})`);
     console.log('joins     :');
     for (const j of res.payload.joins) {
@@ -82,9 +84,17 @@ async function main(): Promise<void> {
     console.log(`FAILED at stage: ${res.failure.stage}  reason: ${res.failure.reason}`);
     if (res.failure.detail) console.log('detail    :', res.failure.detail);
     if (res.anchorSet) console.log('terminals :', res.anchorSet.terminals.map(short).join(', '));
+    printPrune(res.traces.prune);
     if (res.payload) console.log('joins     :', res.payload.joins.map((j) => `${short(j.from)}→${short(j.to)}`).join(', '));
     console.log('traces    :', Object.keys(res.traces).join(', '));
   }
+}
+
+/** Dump the S1.5 prune trace: kept (with grounding kind) and dropped (with reason). */
+function printPrune(prune: PruneTrace | undefined): void {
+  if (!prune) return;
+  console.log('prune kept:', prune.kept.map((t) => `${short(t)}[${prune.groundedBy[t]}]`).join(', ') || '(none)');
+  console.log('prune drop:', prune.dropped.map((d) => `${short(d.iri)} (${d.reason})`).join(', ') || '(none)');
 }
 
 main().catch((e) => {

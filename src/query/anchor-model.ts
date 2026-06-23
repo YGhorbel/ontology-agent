@@ -16,6 +16,13 @@ export interface ConceptAnchor {
   kind: 'class' | 'property' | 'capability';
   /** The matched element's IRI (class/property/capability `@id`). */
   iri: string;
+  /**
+   * The class IRI this anchor grounds as a terminal — its scope/owning class.
+   * For a `class` anchor this equals `iri`; for `property`/`capability` it is the
+   * owning/scope class. Exposed (not just used internally) so Stage-2 pruning can
+   * reconstruct anchor provenance from the `AnchorSet` alone. See src/query/prune.ts.
+   */
+  scopeClassIri: string;
   /** The question span (normalized) that produced the hit. */
   matchedText: string;
   /** Which surface field of the element the span matched. */
