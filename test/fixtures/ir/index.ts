@@ -72,3 +72,38 @@ export const ir6numericText: MetricQueryIR = {
 export const ir6numeric: MetricQueryIR = {
   measures: [{ aggExpr: { fn: 'AVG', property: prop('pitstops', 'milliseconds') }, alias: 'avg_ms' }],
 };
+
+// ── Generalized shapes (projection / ranking), no aggregate. ──
+
+// P1. Projection: read columns + filter, no aggregate, no GROUP BY.
+export const irProjection: MetricQueryIR = {
+  select: [{ property: prop('circuits', 'lat') }, { property: prop('circuits', 'lng') }],
+  filters: [{ property: prop('circuits', 'name'), op: '=', value: 'Silverstone Circuit' }],
+};
+
+// P1d. Same projection with DISTINCT (the "coordinates of …" shape).
+export const irProjectionDistinct: MetricQueryIR = {
+  select: [{ property: prop('circuits', 'lat') }, { property: prop('circuits', 'lng') }],
+  distinct: true,
+  filters: [{ property: prop('circuits', 'name'), op: '=', value: 'Silverstone Circuit' }],
+};
+
+// R1. Ranking over a real (date) column → ORDER BY + LIMIT, no cast. ("the oldest driver")
+export const irRankingNumeric: MetricQueryIR = {
+  select: [{ property: prop('drivers', 'forename') }, { property: prop('drivers', 'surname') }],
+  orderBy: [{ byProperty: prop('drivers', 'dob'), dir: 'ASC' }],
+  limit: 1,
+};
+
+// R2. Ranking over a numeric-TEXT column (results.fastestlapspeed is text) → ORDER BY must CAST.
+export const irRankingNumericText: MetricQueryIR = {
+  select: [{ property: prop('results', 'fastestlapspeed') }],
+  orderBy: [{ byProperty: prop('results', 'fastestlapspeed'), dir: 'DESC' }],
+  limit: 1,
+};
+
+// X1. Mixed shape (both select and measures) → must fail the schema refine.
+export const irMixedInvalid: MetricQueryIR = {
+  select: [{ property: prop('circuits', 'lat') }],
+  measures: [{ aggExpr: { fn: 'COUNT', property: prop('circuits', 'circuitid') }, alias: 'n' }],
+};

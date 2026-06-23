@@ -133,7 +133,7 @@ function resolveColumn(iri: string, scope: Scope): { table: string; column: stri
 // ── Pass 4 helper: plan de-cumulation folds for cumulative-snapshot aggExpr measures ──
 function planTemporalityFolds(ir: MetricQueryIR, scope: Scope, trace: CompileTraceEntry[]): Map<string, FoldPlan> {
   const folds = new Map<string, FoldPlan>();
-  for (const m of ir.measures) {
+  for (const m of ir.measures ?? []) {
     if (!m.aggExpr) continue; // capability formulaHints expand verbatim (documented known-gap)
     const { table, column, prop } = resolveColumn(m.aggExpr.property, scope);
     if (prop.temporality !== 'cumulative-snapshot') continue;
@@ -310,7 +310,7 @@ export function compile(ir: MetricQueryIR, payload: SubgraphPayload): CompileRes
   const scope = buildScope(payload);
 
   // ── Pass 1: validation / scope coherence ──
-  for (const m of ir.measures) {
+  for (const m of ir.measures ?? []) {
     if (m.capability !== undefined) {
       const cap = scope.capByIri.get(m.capability);
       if (!cap) throw new CompileError(`capability not in payload: ${m.capability}`, 'scope-capability', m.capability);
@@ -330,6 +330,7 @@ export function compile(ir: MetricQueryIR, payload: SubgraphPayload): CompileRes
       resolveColumn(m.aggExpr.property, scope); // throws on out-of-scope table/column
     }
   }
+  for (const s of ir.select ?? []) resolveColumn(s.property, scope);
   for (const g of ir.groupBy ?? []) resolveColumn(g.property, scope);
   for (const f of ir.filters ?? []) resolveColumn(f.property, scope);
   for (const o of ir.orderBy ?? []) if (o.byProperty) resolveColumn(o.byProperty, scope);
@@ -339,16 +340,22 @@ export function compile(ir: MetricQueryIR, payload: SubgraphPayload): CompileRes
   const folds = planTemporalityFolds(ir, scope, trace);
   if (folds.size === 0) trace.push({ pass: 'temporality', detail: 'no cumulative-snapshot measures' });
 
-  // ── Pass 2: measure expansion (+ pass 6 cast for aggExpr columns) ──
+  // ── Pass 2: projection (select) OR measure expansion (+ pass 6 cast for aggExpr columns) ──
   const selectItems: string[] = [];
   const groupExprs: string[] = [];
+  // projection / ranking: bare qualified columns, no aggregate, no GROUP BY
+  for (const s of ir.select ?? []) {
+    const { sql } = refExpr(s.property, scope, folds);
+    selectItems.push(sql);
+    trace.push({ pass: 'select', detail: `projection ${sql}` });
+  }
   for (const g of ir.groupBy ?? []) {
     const { sql } = refExpr(g.property, scope, folds);
     const { column } = parsePropertyIri(g.property);
     groupExprs.push(sql);
     selectItems.push(`${sql} AS ${column}`);
   }
-  ir.measures.forEach((m, i) => {
+  (ir.measures ?? []).forEach((m, i) => {
     if (m.capability !== undefined) {
       const cap = scope.capByIri.get(m.capability)!;
       const alias = m.alias ?? defaultCapabilityAlias(m.capability);
@@ -382,13 +389,22 @@ export function compile(ir: MetricQueryIR, payload: SubgraphPayload): CompileRes
   if (conds.length > 0) trace.push({ pass: 'filter', detail: `${conds.length} WHERE condition(s)` });
 
   // ── Pass 7: assemble ──
-  const lines = [`SELECT ${selectItems.join(', ')}`, fromSql];
+  const lines = [`SELECT ${ir.distinct ? 'DISTINCT ' : ''}${selectItems.join(', ')}`, fromSql];
   if (conds.length > 0) lines.push(`WHERE ${conds.join(' AND ')}`);
   if (groupExprs.length > 0) lines.push(`GROUP BY ${groupExprs.join(', ')}`);
   const orderParts: string[] = [];
   for (const o of ir.orderBy ?? []) {
-    const target = o.byAlias ?? refExpr(o.byProperty!, scope, folds).sql;
-    orderParts.push(`${target} ${o.dir}`);
+    let target: string;
+    if (o.byAlias !== undefined) {
+      target = o.byAlias;
+    } else {
+      // Ordering by a property is a numeric context: numeric-text columns must sort numerically,
+      // not lexically (maybeCast no-ops on real numeric/date/text columns).
+      const { sql, prop } = refExpr(o.byProperty!, scope, folds);
+      target = maybeCast(sql, prop, true, trace);
+    }
+    const nulls = o.nulls ? ` NULLS ${o.nulls}` : '';
+    orderParts.push(`${target} ${o.dir}${nulls}`);
   }
   if (orderParts.length > 0) lines.push(`ORDER BY ${orderParts.join(', ')}`);
   if (ir.limit !== undefined) lines.push(`LIMIT ${ir.limit}`);

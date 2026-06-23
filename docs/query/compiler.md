@@ -25,8 +25,14 @@ see ADR-003). Every pass appends to `trace` for the eventual certificate.
    referenced table must be a class in the payload** — else `CompileError('scope-table', <table>)`.
    This guards the generator-era scope bug (a metric whose formula reaches a table outside the tree).
    Nothing is silently dropped.
-2. **Measure expansion.** `capability` → its `formulaHint` verbatim. `aggExpr` → `fn(<table>.<col>)`
-   resolved from the property IRI.
+2. **SELECT assembly (projection or measures).** The IR is one of three shapes (see
+   [ir-spec.md](./ir-spec.md)):
+   - **projection / ranking** (`select` present) → each column emitted as a **bare** qualified
+     `table.col` (no alias, no aggregate), and **no GROUP BY**. `distinct: true` prepends
+     `SELECT DISTINCT`.
+   - **aggregation** (`measures` present) → `capability` expands to its `formulaHint` verbatim;
+     `aggExpr` → `fn(<table>.<col>)` resolved from the property IRI; `groupBy` columns are added to
+     SELECT and to `GROUP BY`.
 3. **Join materialization.** `FROM <root>` then one `JOIN <table> ON <pairs>` per `payload.joins`
    edge, using the literal `on` column pairs; a composite edge (≥2 pairs) emits a multi-column `AND`
    condition. Exactly the payload's joins — no more, no fewer (fold-consumed edges excepted, pass 4).
@@ -38,11 +44,18 @@ see ADR-003). Every pass appends to `trace` for the eventual certificate.
    documented known-gap, not rewritten here).
 5. **Filter.** `WHERE` from IR filters: strings quoted/escaped, `IN` → list, `LIKE` passthrough.
 6. **Numeric-text cast.** A column with `isNumericText = true` used numerically gets
-   `CAST(<col> AS numeric)` — for a numeric aggregate `fn` (`SUM`/`AVG`/`MIN`/`MAX`) or a numeric
-   comparison (`<`,`<=`,`>`,`>=`, or `=`/`!=` against a number). `LIKE`/string `IN` are not cast.
-   `formulaHint`s are not re-cast (they already carry their own validated CAST).
-7. **Assemble + parse-check.** Compose `SELECT/FROM/JOIN/WHERE/GROUP BY/ORDER BY/LIMIT`, then
-   `parse()` the result. A parse failure becomes `CompileError('parse', <sql>)`.
+   `CAST(<col> AS numeric)` — for a numeric aggregate `fn` (`SUM`/`AVG`/`MIN`/`MAX`), a numeric
+   comparison (`<`,`<=`,`>`,`>=`, or `=`/`!=` against a number), **or as an `ORDER BY` target**.
+   `LIKE`/string `IN` are not cast. `formulaHint`s are not re-cast (they already carry their own
+   validated CAST). The ORDER BY case is the **text-numeric sort trap**: several ranking golds sort
+   over text columns holding numbers (e.g. `results.fastestlapspeed`) where lexical order ≠ numeric
+   order; the same `maybeCast` helper makes the sort numeric. An `orderBy` `byAlias` target (a
+   measure alias) is never cast — the measure expression already handled its own. *Limitation:*
+   time-formatted text like `"1:23.796"` is not a clean numeric cast and is left as a known gap.
+7. **Assemble + parse-check.** Compose `SELECT [DISTINCT]/FROM/JOIN/WHERE/GROUP BY/ORDER BY/LIMIT`,
+   then `parse()` the result. `ORDER BY` renders `<target> <dir>` plus an optional `NULLS FIRST|LAST`
+   only when `orderBy.nulls` is set (otherwise Postgres' native default applies). A parse failure
+   becomes `CompileError('parse', <sql>)`.
 
 ## The temporality rewrite (exact SQL form)
 

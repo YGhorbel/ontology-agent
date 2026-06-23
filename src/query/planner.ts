@@ -31,7 +31,7 @@ import { MetricQueryIRSchema, specializeIrSchema, type MetricQueryIR } from './i
 import type { SubgraphPayload } from './graph-model.js';
 import type { StructuredLlm } from '../llm/structured-llm.js';
 import { makeRealLlm } from '../llm/client.js';
-import { PLANNER_PROMPT_VERSION, PLANNER_SYSTEM_V1, buildPlannerPrompt, type RepairContext } from '../prompts/planner.js';
+import { PLANNER_PROMPT_VERSION, PLANNER_SYSTEM_V2, buildPlannerPrompt, type RepairContext } from '../prompts/planner.js';
 
 /** GPT-5-mini is the only LLM for the planner; gpt-5 is recognized as a reasoning model by the client. */
 const PLANNER_MODEL = 'gpt-5-mini';
@@ -105,7 +105,7 @@ export async function planQuery(
   for (let i = 0; i <= maxRetries; i++) {
     const user = buildPlannerPrompt(question, payload, repair);
     // Bind the BASE shape for structured output; the leash is the explicit safeParse below.
-    const raw: unknown = await llm.generate(MetricQueryIRSchema, PLANNER_SYSTEM_V1, user);
+    const raw: unknown = await llm.generate(MetricQueryIRSchema, PLANNER_SYSTEM_V2, user);
 
     const parsed = leash.safeParse(raw);
     if (parsed.success) {

@@ -19,30 +19,50 @@ import type { SubgraphPayload } from '../query/graph-model.js';
 import { payloadIris } from '../query/ir.js';
 import { tableOfClassIri } from '../query/graph-build.js';
 
-export const PLANNER_PROMPT_VERSION = 'planner/v1';
+export const PLANNER_PROMPT_VERSION = 'planner/v2';
 
-export const PLANNER_SYSTEM_V1 = [
-  'You convert a natural-language question into a typed METRIC QUERY (a MetricQueryIR) over the',
+export const PLANNER_SYSTEM_V2 = [
+  'You convert a natural-language question into a typed QUERY (a MetricQueryIR) over the',
   'given subgraph. You do NOT write SQL and you do NOT choose joins — a deterministic compiler',
   'renders the SQL and the joins are ALREADY fixed by the subgraph (shown for context only).',
   '',
-  'You choose only WHAT to compute. Fill these slots:',
-  '- measures (required, >=1): EXACTLY ONE of the two forms per measure —',
+  'FIRST pick the QUERY SHAPE — emit ONLY that shape\'s fields:',
+  '1. PROJECTION — the question just asks to read columns ("what is X", "list the names …").',
+  '     Fill "select" (+ optional "filters"). NO measures, NO groupBy. Add "distinct": true when',
+  '     the question wants unique rows ("the coordinates of …").',
+  '2. RANKING — "the oldest", "the best", "top N", "first/last by …". A projection that ALSO',
+  '     orders: fill "select" + "orderBy" (by a property) + usually "limit". NO aggregate.',
+  '3. AGGREGATION — the question asks to COMPUTE a number ("how many", "average", "total per X").',
+  '     Fill "measures" (+ optional "groupBy"). This is the ONLY shape that uses measures/groupBy.',
+  'A query is EXACTLY ONE shape: never emit both "select" and "measures"; "groupBy" only with measures.',
+  '',
+  'Slots:',
+  '- select (projection/ranking): [{ "property": "<property IRI>" }] — the columns to return.',
+  '- distinct (projection/ranking, optional): true to deduplicate rows.',
+  '- measures (aggregation, >=1): EXACTLY ONE of the two forms per measure —',
   '    { "capability": "<capability IRI>" }  → use a named metric from the CAPABILITIES menu, or',
   '    { "aggExpr": { "fn": "COUNT|SUM|AVG|MIN|MAX", "property": "<property IRI>" } } → an ad-hoc aggregate.',
   '    Optionally add "alias": "<snake_case>". Never set both capability and aggExpr on one measure.',
-  '- groupBy (optional): [{ "property": "<property IRI>" }] — the "per X" / "by X" dimensions.',
+  '- groupBy (aggregation, optional): [{ "property": "<property IRI>" }] — the "per X" / "by X" dimensions.',
   '- filters (optional): [{ "property": "<property IRI>", "op": "=|!=|<|<=|>|>=|IN|LIKE", "value": ... }]',
   '    value is a bare string/number, or an array of strings for IN. Do not quote.',
-  '- orderBy (optional): [{ "byAlias": "<a measure alias>" OR "byProperty": "<property IRI>", "dir": "ASC|DESC" }]',
-  '    exactly one of byAlias / byProperty per term.',
+  '- orderBy (optional): [{ "byAlias": "<a measure alias>" OR "byProperty": "<property IRI>", "dir": "ASC|DESC",',
+  '    "nulls": "FIRST|LAST" (optional) }] — exactly one of byAlias / byProperty per term.',
   '- limit (optional): a positive integer.',
+  '',
+  'EXAMPLES:',
+  '- "What are the coordinates of Silverstone Circuit?" (projection) →',
+  '    { "select": [{ "property": "qsl:property/circuits/lat" }, { "property": "qsl:property/circuits/lng" }],',
+  '      "distinct": true, "filters": [{ "property": "qsl:property/circuits/name", "op": "=", "value": "Silverstone Circuit" }] }',
+  '- "Which country is the oldest driver from?" (ranking) →',
+  '    { "select": [{ "property": "qsl:property/drivers/nationality" }],',
+  '      "orderBy": [{ "byProperty": "qsl:property/drivers/dob", "dir": "ASC" }], "limit": 1 }',
   '',
   'HARD RULES:',
   '- Use ONLY the capability IRIs and property IRIs listed in the menu below — verbatim. Never invent',
   '  an IRI, a table, or a column. An IRI not in the menu will be REJECTED.',
   '- Do NOT emit joins, tables, FROM clauses, or SQL. The MetricQueryIR has no join field.',
-  '- Prefer a named CAPABILITY over an ad-hoc aggExpr when one matches the question.',
+  '- In the AGGREGATION shape, prefer a named CAPABILITY over an ad-hoc aggExpr when one matches.',
 ].join('\n');
 
 /** `qsl:property/<table>/<column>` -> "<table>.<column>" for human-readable menu lines. */

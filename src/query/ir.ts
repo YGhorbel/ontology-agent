@@ -34,6 +34,9 @@ export type Measure = z.infer<typeof MeasureSchema>;
 
 export const GroupBySchema = z.object({ property: z.string() });
 
+/** A projection column: a bare property ref (no alias — projection emits `table.col` verbatim). */
+export const SelectItemSchema = z.object({ property: z.string() });
+
 export const FilterSchema = z.object({
   property: z.string(),
   op: FilterOpSchema,
@@ -45,18 +48,38 @@ export const OrderBySchema = z
     byAlias: z.string().optional(),
     byProperty: z.string().optional(),
     dir: z.enum(['ASC', 'DESC']),
+    nulls: z.enum(['FIRST', 'LAST']).optional(),
   })
   .refine((o) => (o.byAlias === undefined) !== (o.byProperty === undefined), {
     message: 'orderBy must have exactly one of { byAlias, byProperty }',
   });
 
-export const MetricQueryIRSchema = z.object({
-  measures: z.array(MeasureSchema).min(1),
-  groupBy: z.array(GroupBySchema).optional(),
-  filters: z.array(FilterSchema).optional(),
-  orderBy: z.array(OrderBySchema).optional(),
-  limit: z.number().int().positive().optional(),
-});
+/**
+ * One IR, exactly one of three shapes — distinguished by which fields are present (no literal tag):
+ * - projection: `select` (no measures, no groupBy). Ranking = projection that also carries `orderBy`.
+ * - aggregation: `measures` (>=1), optional `groupBy`. Unchanged behaviour.
+ * The refines below enforce the XOR and keep one coherent shape per query. `distinct` is a
+ * projection/ranking-only flag (it is a no-op for aggregation, and the third refine rejects it there).
+ */
+export const MetricQueryIRSchema = z
+  .object({
+    select: z.array(SelectItemSchema).min(1).optional(),
+    distinct: z.boolean().optional(),
+    measures: z.array(MeasureSchema).min(1).optional(),
+    groupBy: z.array(GroupBySchema).optional(),
+    filters: z.array(FilterSchema).optional(),
+    orderBy: z.array(OrderBySchema).optional(),
+    limit: z.number().int().positive().optional(),
+  })
+  .refine((q) => (q.select === undefined) !== (q.measures === undefined), {
+    message: 'query must have exactly one of { select, measures }',
+  })
+  .refine((q) => !(q.select !== undefined && q.groupBy !== undefined), {
+    message: 'projection/ranking (select) cannot have groupBy — groupBy belongs to the aggregation shape',
+  })
+  .refine((q) => !(q.distinct !== undefined && q.select === undefined), {
+    message: 'distinct is only valid on the projection/ranking (select) shape',
+  });
 export type MetricQueryIR = z.infer<typeof MetricQueryIRSchema>;
 
 /** The set of legal property / capability IRIs derivable from a payload. */
@@ -86,7 +109,8 @@ export function specializeIrSchema(payload: SubgraphPayload): z.ZodType<MetricQu
   };
 
   return MetricQueryIRSchema.superRefine((ir, ctx) => {
-    ir.measures.forEach((m, i) => {
+    ir.select?.forEach((s, i) => checkProp(s.property, ctx, ['select', i, 'property']));
+    ir.measures?.forEach((m, i) => {
       if (m.capability !== undefined && !capabilities.has(m.capability)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

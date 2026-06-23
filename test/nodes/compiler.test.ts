@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from 'pgsql-ast-parser';
 import { compile, CompileError } from '../../src/query/compiler.js';
-import { specializeIrSchema, type MetricQueryIR } from '../../src/query/ir.js';
+import { specializeIrSchema, MetricQueryIRSchema, type MetricQueryIR } from '../../src/query/ir.js';
 import {
   payloadFor,
   classIriOf,
@@ -20,6 +20,11 @@ import {
   ir4perRace,
   ir6numericText,
   ir6numeric,
+  irProjection,
+  irProjectionDistinct,
+  irRankingNumeric,
+  irRankingNumericText,
+  irMixedInvalid,
   CAP_AVG_LAP_MS,
 } from '../fixtures/ir/index.js';
 import { tableOfClassIri } from '../../src/query/graph-build.js';
@@ -180,5 +185,60 @@ describe('Stage 3b — compiler: numeric-text cast', () => {
     expect(sql2).toContain('AVG(pitstops.milliseconds)');
     expect(sql2).not.toContain('CAST');
     expect(parses(sql2)).toBe(true);
+  });
+});
+
+describe('Stage 3b — compiler: generalized shapes (projection / ranking)', () => {
+  it('P1. projection renders SELECT cols + WHERE, no aggregate, no GROUP BY; DISTINCT when flagged', () => {
+    const payload = payloadFor(['circuits'], { anchored: { circuits: ['lat', 'lng', 'name'] } });
+
+    const { sql } = compile(irProjection, payload);
+    expect(sql).toContain('SELECT circuits.lat, circuits.lng');
+    expect(sql).toContain("circuits.name = 'Silverstone Circuit'");
+    expect(sql).not.toMatch(/\b(AVG|SUM|COUNT|MIN|MAX)\s*\(/);
+    expect(sql).not.toContain('GROUP BY');
+    expect(parses(sql)).toBe(true);
+
+    const { sql: sqlD } = compile(irProjectionDistinct, payload);
+    expect(sqlD).toContain('SELECT DISTINCT circuits.lat, circuits.lng');
+    expect(parses(sqlD)).toBe(true);
+  });
+
+  it('R1. ranking over a real (date) column → ORDER BY + LIMIT, no cast', () => {
+    const payload = payloadFor(['drivers'], { anchored: { drivers: ['forename', 'surname', 'dob'] } });
+
+    const { sql } = compile(irRankingNumeric, payload);
+    expect(sql).toContain('SELECT drivers.forename, drivers.surname');
+    expect(sql).toContain('ORDER BY drivers.dob ASC');
+    expect(sql).toContain('LIMIT 1');
+    expect(sql).not.toContain('CAST');
+    expect(sql).not.toContain('GROUP BY');
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('R2. ranking over a numeric-TEXT column → ORDER BY emits a NUMERIC cast (the sort trap)', () => {
+    const payload = payloadFor(['results'], { anchored: { results: ['fastestlapspeed'] } });
+
+    const { sql } = compile(irRankingNumericText, payload);
+    expect(sql).toContain('ORDER BY CAST(results.fastestlapspeed AS numeric) DESC');
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('X1. refine rejects a mixed shape (both select and measures)', () => {
+    const payload = payloadFor(['circuits'], { anchored: { circuits: ['lat', 'circuitid'] } });
+    // base schema rejects the mix outright
+    expect(MetricQueryIRSchema.safeParse(irMixedInvalid).success).toBe(false);
+    // and so does the payload-specialized leash
+    expect(specializeIrSchema(payload).safeParse(irMixedInvalid).success).toBe(false);
+  });
+
+  it('5b. specializeIrSchema covers select: rejects an out-of-payload projection column', () => {
+    const payload = payloadFor(['circuits'], { anchored: { circuits: ['lat', 'lng', 'name'] } });
+    const schema = specializeIrSchema(payload);
+
+    expect(schema.safeParse(irProjection).success).toBe(true);
+
+    const badSelect: MetricQueryIR = { select: [{ property: prop('pitstops', 'duration') }] };
+    expect(schema.safeParse(badSelect).success).toBe(false);
   });
 });

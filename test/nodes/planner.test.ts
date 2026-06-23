@@ -13,7 +13,7 @@ import { compile } from '../../src/query/compiler.js';
 import { specializeIrSchema, type MetricQueryIR } from '../../src/query/ir.js';
 import { planQuery } from '../../src/query/planner.js';
 import { makeFakeLlm, type FakeResponse } from '../../src/llm/structured-llm.js';
-import { buildPlannerPrompt, PLANNER_PROMPT_VERSION, PLANNER_SYSTEM_V1 } from '../../src/prompts/planner.js';
+import { buildPlannerPrompt, PLANNER_PROMPT_VERSION, PLANNER_SYSTEM_V2 } from '../../src/prompts/planner.js';
 import { payloadFor, prop, ir1, CAP_AVG_LAP_MS } from '../fixtures/ir/index.js';
 
 const newPayload = () => payloadFor(['laptimes', 'constructors'], { anchored: { constructors: ['nationality'] } });
@@ -123,6 +123,33 @@ describe('Stage 3a — planner: prompt is versioned + payload-scoped', () => {
     expect(prompt).toContain('constructors.nationality');
     // …but is instructed NOT to emit joins (both in the rendered prompt and the system prompt).
     expect(prompt).toContain('DO NOT emit joins');
-    expect(PLANNER_SYSTEM_V1).toContain('do NOT choose joins');
+    expect(PLANNER_SYSTEM_V2).toContain('do NOT choose joins');
+  });
+});
+
+describe('Stage 3a — planner: generalized shapes (projection) + leash covers select', () => {
+  it('7. a projection IR passes the leash and compiles; an out-of-payload select column triggers repair', async () => {
+    const payload = newPayload();
+
+    // In-payload projection: read a column the payload exposes (no measures).
+    const goodProjection: MetricQueryIR = { select: [{ property: prop('constructors', 'nationality') }] };
+    const llmGood = fakeReturning({ when: () => true, respond: () => goodProjection });
+
+    const res = await planQuery('list the constructor nationalities', payload, { llm: llmGood });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(specializeIrSchema(payload).safeParse(res.ir).success).toBe(true);
+    const { sql } = compile(res.ir, payload);
+    expect(sql).toContain('SELECT constructors.nationality');
+    expect(sql).not.toMatch(/\b(AVG|SUM|COUNT|MIN|MAX)\s*\(/);
+
+    // Out-of-payload select column → first attempt fails the leash on the `select` path, repair fires.
+    const badProjection: MetricQueryIR = { select: [{ property: prop('pitstops', 'duration') }] };
+    const llmBad = fakeReturning({ when: () => true, respond: () => badProjection });
+
+    const res2 = await planQuery('q', payload, { llm: llmBad });
+    expect(res2.trace.attempts[0]!.ok).toBe(false);
+    expect(res2.trace.attempts[0]!.issues?.some((i) => i.includes('pitstops'))).toBe(true);
+    expect(res2.trace.attempts.length).toBeGreaterThan(1);
   });
 });
