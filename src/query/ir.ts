@@ -10,9 +10,10 @@
  * narrows it so only IRIs present in that payload validate.
  */
 import { z } from 'zod';
-import type { SubgraphPayload } from './graph-model.js';
+import type { ColumnProp, SubgraphPayload } from './graph-model.js';
 import { tableOfClassIri } from './graph-build.js';
 import { datatypePropertyIri } from '../types/ontology.js';
+import { normalize } from './text-normalize.js';
 
 export const AggFnSchema = z.enum(['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']);
 export type AggFn = z.infer<typeof AggFnSchema>;
@@ -93,14 +94,71 @@ export function payloadIris(payload: SubgraphPayload): { properties: Set<string>
   return { properties, capabilities };
 }
 
+/** A property-IRI → ColumnProp map for the payload (mirrors `payloadIris`' class/column walk). */
+function payloadColumnByIri(payload: SubgraphPayload): Map<string, ColumnProp> {
+  const m = new Map<string, ColumnProp>();
+  for (const c of payload.classes) {
+    const table = tableOfClassIri(c.iri);
+    for (const p of c.properties) m.set(datatypePropertyIri(table, p.col), p);
+  }
+  return m;
+}
+
+/**
+ * Value-grounding (ADR-009). Filter literals are grounded against a column's profiled sample values —
+ * the SQL-side of READS's "constrained option pool": the planner must SELECT a real value, not invent
+ * one. It only FIRES for an ENUMERABLE column under an equality/membership op; everywhere else it is a
+ * no-op (the safe default), so it never rejects legitimate values on free-text / high-cardinality /
+ * numeric columns.
+ */
+const VALUE_GROUNDED_OPS = new Set<FilterOp>(['=', '!=', 'IN']);
+/** Max sample values surfaced in a rejection message (the option pool the planner picks from). */
+const OPTION_POOL_CAP = 15;
+
+/**
+ * Enumerable ⇔ the payload carries this column's FULL domain: it has samples AND `distinctCount`
+ * fits within them (`distinctCount <= sampleValues.length`). Self-protecting: if samples were ever
+ * truncated (length < distinctCount) this is false → SKIP, so a real-but-unlisted value is never
+ * rejected. (The generator only emits samples when distinctCount ≤ the enum cap, so presence of a
+ * full list ⇒ the whole domain — see ADR-009 and src/agent/nodes/05-validate.ts.)
+ */
+function isEnumerable(cp: ColumnProp): cp is ColumnProp & { sampleValues: string[]; distinctCount: number } {
+  return (
+    cp.sampleValues !== undefined &&
+    cp.sampleValues.length > 0 &&
+    cp.distinctCount !== undefined &&
+    cp.distinctCount <= cp.sampleValues.length
+  );
+}
+
+/** The canonical sample for `literal` (exact match wins; else normalized match), or null if none. */
+function canonicalSample(literal: string, samples: string[]): string | null {
+  if (samples.includes(literal)) return literal;
+  const n = normalize(literal);
+  return samples.find((s) => normalize(s) === n) ?? null;
+}
+
+/** The string literal(s) a filter value contributes to grounding (numbers contribute none). */
+function groundableLiterals(value: string | number | string[]): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value;
+  return []; // numbers (ids/years/ints) are never value-grounded
+}
+
 /**
  * Narrow the IR schema to a specific payload: the only legal property IRIs are those
  * of the payload's classes' columns, and the only legal capability IRIs are the
  * payload's capabilities. A reference outside the payload fails `parse` with a precise
  * issue path. This is the deterministic leash the planner LLM will later be held to.
+ *
+ * It also value-grounds filter literals (ADR-009): on an enumerable column under `=`/`!=`/`IN`,
+ * a literal absent from the column's sample domain is rejected with the option pool surfaced in the
+ * issue message (reusing the existing repair plumbing). A literal that matches only after
+ * normalization is accepted AND rewritten to its canonical sample value by the trailing transform.
  */
 export function specializeIrSchema(payload: SubgraphPayload): z.ZodType<MetricQueryIR> {
   const { properties, capabilities } = payloadIris(payload);
+  const colByIri = payloadColumnByIri(payload);
 
   const checkProp = (iri: string, ctx: z.RefinementCtx, path: (string | number)[]): void => {
     if (!properties.has(iri)) {
@@ -121,9 +179,39 @@ export function specializeIrSchema(payload: SubgraphPayload): z.ZodType<MetricQu
       if (m.aggExpr !== undefined) checkProp(m.aggExpr.property, ctx, ['measures', i, 'aggExpr', 'property']);
     });
     ir.groupBy?.forEach((g, i) => checkProp(g.property, ctx, ['groupBy', i, 'property']));
-    ir.filters?.forEach((f, i) => checkProp(f.property, ctx, ['filters', i, 'property']));
-    ir.orderBy?.forEach((o, i) => {
-      if (o.byProperty !== undefined) checkProp(o.byProperty, ctx, ['orderBy', i, 'byProperty']);
+    ir.filters?.forEach((f, i) => {
+      checkProp(f.property, ctx, ['filters', i, 'property']);
+      // Value-grounding: only on an enumerable column under an equality/membership op.
+      const cp = colByIri.get(f.property);
+      if (!cp || !VALUE_GROUNDED_OPS.has(f.op) || !isEnumerable(cp)) return;
+      for (const lit of groundableLiterals(f.value)) {
+        if (canonicalSample(lit, cp.sampleValues) === null) {
+          const pool = cp.sampleValues.slice(0, OPTION_POOL_CAP).join(', ');
+          const more = cp.sampleValues.length > OPTION_POOL_CAP ? ` (+${cp.sampleValues.length - OPTION_POOL_CAP} more)` : '';
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `filter value '${lit}' is not a known value of ${cp.col}; choose one of: ${pool}${more}`,
+            path: ['filters', i, 'value'],
+          });
+        }
+      }
     });
+  }).transform((ir): MetricQueryIR => {
+    // Runs only on parse success (no issues) — so every grounded literal is guaranteed to match.
+    // Rewrite each grounded filter value to its canonical sample (fixes case/diacritic mismatches).
+    if (!ir.filters) return ir;
+    const filters = ir.filters.map((f) => {
+      const cp = colByIri.get(f.property);
+      if (!cp || !VALUE_GROUNDED_OPS.has(f.op) || !isEnumerable(cp)) return f;
+      if (typeof f.value === 'string') {
+        const canon = canonicalSample(f.value, cp.sampleValues);
+        return canon !== null ? { ...f, value: canon } : f;
+      }
+      if (Array.isArray(f.value)) {
+        return { ...f, value: f.value.map((v) => canonicalSample(v, cp.sampleValues) ?? v) };
+      }
+      return f;
+    });
+    return { ...ir, filters };
   });
 }

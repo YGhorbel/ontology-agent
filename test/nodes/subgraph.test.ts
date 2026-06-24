@@ -253,10 +253,20 @@ describe('Stage 2 — single-terminal no-op + payload trimming', () => {
     }
     // Bridge-node columns never carry sample values (context discipline — only terminals do).
     for (const pr of qual.properties) expect(pr.sampleValues).toBeUndefined();
-    // A terminal class DOES carry truncated (<=15) enum samples.
+    // A terminal class DOES carry enum samples: the FULL domain for an exhaustive enum
+    // (distinctCount <= samples → full list kept for value-grounding), else capped at 15.
     const constructors = p.classes.find((c) => c.iri === iri('constructors'))!;
     for (const pr of constructors.properties) {
-      if (pr.sampleValues) expect(pr.sampleValues.length).toBeLessThanOrEqual(15);
+      if (!pr.sampleValues) continue;
+      if (pr.distinctCount !== undefined && pr.distinctCount <= pr.sampleValues.length) {
+        expect(pr.sampleValues.length).toBe(pr.distinctCount); // exhaustive enum keeps full domain
+      } else {
+        expect(pr.sampleValues.length).toBeLessThanOrEqual(15); // non-exhaustive sample is capped
+      }
     }
+    // constructors.nationality is an exhaustive enum (>15 distinct) → full domain survives the trim.
+    const nat = constructors.properties.find((pr) => pr.col === 'nationality')!;
+    expect(nat.sampleValues!.length).toBeGreaterThan(15);
+    expect(nat.sampleValues!.length).toBe(nat.distinctCount);
   });
 });

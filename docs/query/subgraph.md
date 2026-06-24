@@ -110,7 +110,11 @@ This matters on intact schemas where many declared routes tie at cost 0 (see the
 For each class in the tree, keep **only**:
 - (a) every column used in a join in this tree,
 - (b) every anchored column (from `opts.anchoredColumns`),
-- (c) for **terminal** classes only, enum columns' `sampleValues`, truncated to 15.
+- (c) for **terminal** classes only, enum columns' `sampleValues` (with `distinctCount`). An
+  **exhaustive** enum (`distinctCount <= sampleValues.length` — the generator only emits samples
+  when the column is within the enum cap, so the full domain is listed) keeps its **full domain**
+  so the Stage-3a leash can value-ground filter literals against it
+  (see [ADR-009](../adr/009-value-grounding.md)); a non-exhaustive sampled column is truncated to 15.
 
 Everything else is dropped. Example: `results` has ~18 columns; if it is on the tree it carries its
 join keys (e.g. `driverid`, `constructorid`) and not `fastestlapspeed`/`positiontext`/etc.

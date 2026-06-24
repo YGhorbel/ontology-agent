@@ -37,6 +37,36 @@ So generation is steered by the **prompt's IRI menu** (built from `payloadIris(p
 equals the leash by construction), and the narrowed schema remains the authority — at the validate
 step, which is exactly where the repair loop reads it.
 
+## Value-grounding: filter literals must be real values ([ADR-009](../adr/009-value-grounding.md))
+
+The leash also constrains filter **values**, not just IRIs. The IRI leash stops the planner inventing
+a *column*; value-grounding stops it inventing a *value* for that column — the documented
+`results.positiontext = 'eliminated in first period'` hallucination (a string that exists in no row →
+zero results). It is the SQL-side of READS's *constrained option pool*: the planner must **select** a
+real value, not generate one.
+
+**When it fires (all must hold):**
+- the op is **equality/membership** — `=`, `!=`, `IN` (NOT a range/pattern op `<`/`<=`/`>`/`>=`/`LIKE`);
+- the value is a **string** (or, for `IN`, strings) — numbers (ids/years) are never grounded;
+- the column is **enumerable**: it carries `sampleValues` AND `distinctCount <= sampleValues.length`
+  (the payload holds the column's *full* domain). This predicate is **self-protecting** — if the
+  samples were ever truncated it is false, so a real-but-unlisted value is never wrongly rejected.
+
+**What happens:**
+- exact match against a sample → pass.
+- match only after `normalize()` (case/diacritic/punct fold, reusing
+  [text-normalize.ts](../../src/query/text-normalize.ts)) → pass, and the value is **rewritten** to
+  the canonical sample (`'british'` → `'British'`) by a trailing `transform` on the specialized schema
+  (it runs only on a successful parse, so every grounded literal is guaranteed to match).
+- no match on an enumerable column → **rejected** with the option pool (the sample list, capped at 15)
+  surfaced in the issue message, feeding the same repair loop below — no change to the repair plumbing.
+
+**When it skips (the safe default):** range/pattern op, numeric value, non-enumerable /
+high-cardinality column, or a column with no samples. So `qualifying.position >= 16` stays legal (range
+op — even though `position` *is* enumerable; the op-gate, not the column type, is the guard), and a
+`drivers.surname = 'Vettel'` filter passes untouched (784 distinct, no samples → not enumerable).
+Grounding applies to filters on **terminal** classes, where `sampleValues` live.
+
 ## The bounded repair loop
 
 A plain async loop (not a LangGraph subgraph):
