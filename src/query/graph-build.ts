@@ -69,6 +69,7 @@ function columnPropOf(n: Record<string, unknown>): ColumnProp {
   if (n['qsl:temporalityEvidence'] !== undefined)
     prop.temporalityEvidence = n['qsl:temporalityEvidence'] as ColumnProp['temporalityEvidence'];
   if (n['qsl:sampleValues'] !== undefined) prop.sampleValues = n['qsl:sampleValues'] as string[];
+  if (n['qsl:distinctCount'] !== undefined) prop.distinctCount = n['qsl:distinctCount'] as number;
   return prop;
 }
 

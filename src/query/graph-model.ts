@@ -27,8 +27,16 @@ export interface ColumnProp {
    * not on the measure table itself.
    */
   temporalityEvidence?: { partitionColumns: string[]; orderColumn: string; ratio: number };
-  /** Enum/profile sample values; truncated to 15 in the payload for terminal classes. */
+  /**
+   * Enum/profile sample values. For terminal classes the payload carries the FULL domain when the
+   * enum is exhaustive (`distinctCount <= sampleValues.length` — the generator only emits samples
+   * when `distinctCount <= ONTOLOGY_ENUM_MAX_DISTINCT`, so presence ⇒ full domain); non-exhaustive
+   * sampled columns are truncated to 15. Carried so the leash can value-ground filter literals.
+   */
   sampleValues?: string[];
+  /** Total distinct values in the column (from profiling). Pairs with sampleValues to mark a column
+   * enumerable (exhaustive enum) for filter value-grounding. See docs/adr/009-value-grounding.md. */
+  distinctCount?: number;
 }
 
 /** One join edge between two classes. A composite FK is ONE edge with >=2 columnPairs (RULE B). */

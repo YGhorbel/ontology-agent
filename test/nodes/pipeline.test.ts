@@ -145,7 +145,7 @@ describe('Stage-4 pipeline — C. H2 cumulative column survives anchoring→trim
     // races.year/round) retained — so they must be anchored. A real recall-favoring question
     // anchors none of driverid/round, which is exactly why the rewrite can't fire end-to-end.
     const propAnchor = (t: string, c: string) =>
-      ({ kind: 'property' as const, iri: datatypePropertyIri(t, c), matchedText: c, via: 'prefLabel' as const, score: 1 });
+      ({ kind: 'property' as const, iri: datatypePropertyIri(t, c), scopeClassIri: classIri(t), matchedText: c, via: 'prefLabel' as const, score: 1 });
     const set: AnchorSet = {
       terminals: [ci('driverstandings'), ci('races')],
       conceptAnchors: [
@@ -219,11 +219,26 @@ describe('Stage-4 pipeline — E. planner repair-exhausted → graceful failure'
 
 // ── F. Trace completeness (the provenance spine) ─────────────────────────────
 describe('Stage-4 pipeline — F. traces assemble the provenance spine', () => {
-  it('carries anchor/subgraph/planner/compiler slices on the happy path', async () => {
+  it('carries anchor/prune/subgraph/planner/compiler slices on the happy path', async () => {
     const res = await runPipeline('average lap time for British constructors', realDeps({ llm: fakeIr(ir1) }));
     expect(res.traces.anchor).toBeDefined();
+    expect(res.traces.prune).toBeDefined();
     expect(res.traces.subgraph).toBeDefined();
     expect(res.traces.planner).toBeDefined();
     expect(res.traces.compiler).toBeDefined();
+  });
+});
+
+// ── G. Pruning regression: needed terminals survive, happy path still compiles ─
+describe('Stage-4 pipeline — G. semantic pruning keeps the terminals the query needs', () => {
+  it('keeps laptimes (capability) + constructors (value/class) so the happy path still compiles', async () => {
+    const res = await runPipeline('average lap time for British constructors', realDeps({ llm: fakeIr(ir1) }));
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // The two terminals the query needs survived pruning…
+    expect(res.traces.prune?.kept).toEqual(expect.arrayContaining([ci('laptimes'), ci('constructors')]));
+    // …and the pruned payload is still connected and compiled to SQL (no needed terminal dropped).
+    expect(res.payload.disconnected).toBeFalsy();
+    expect(res.sql).toContain('AVG(laptimes.milliseconds)');
   });
 });

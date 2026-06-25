@@ -32,6 +32,18 @@ routes.
   chosen join set, for both arms.
 - **Metric:** downstream NL2SQL execution accuracy of the compiled plan per arm, paired by question.
 
+## 4th manifestation — the tie-break, not the weights, decides topology (2026-06-23)
+The Steiner objective gained a secondary key: **minimum-cost, then minimum edge count** (ADR-002
+addendum). The trigger: pruned terminals `{drivers, qualifying, races}` routed a needless 3-join tree
+through `laptimes` when a cost-equal 2-join tree existed — both cost 0.0. This is the **4th** decision
+driven by the zero-cost spanning-subgraph property (after: H1 inert on intact F1; the S3b cumulative
+test forced into uniform mode; the cumulative calendar-fold edge sitting off the least-cost tree).
+
+Reinforces the caveat above: on intact F1 **cost cannot discriminate**, so the *tie-break* — now
+`(cost, edge-count, lexicographic)` — determines the chosen topology. H1's weighting is only testable
+on stripped / incomplete-FK schemas where cost actually varies between routes; on the intact schema
+both the weighting *and* the cardinality key operate entirely within the cost-0 tie.
+
 ## Status
 Mechanism wired and unit-tested (Stage 2). Empirical comparison pending the stripped fixtures and the
 NL2SQL eval harness.

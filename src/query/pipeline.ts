@@ -28,6 +28,8 @@ import { anchorQuestion } from './anchor.js';
 import type { AnchorIndex } from './anchor-index.js';
 import type { AnchorSet, AnchorOpts, AnchorTrace } from './anchor-model.js';
 import { extractSubgraph } from './subgraph.js';
+import { pruneTerminals } from './prune.js';
+import type { PruneTrace } from './prune.js';
 import type { OntologyGraph, SubgraphPayload, CapabilityRef, ExtractOpts } from './graph-model.js';
 import { planQuery } from './planner.js';
 import type { PlannerTrace } from './planner.js';
@@ -47,6 +49,7 @@ export interface PipelineFailure {
 /** The provenance spine the Stage-5 certificate will later consume. */
 export interface PipelineTraces {
   anchor?: AnchorTrace;
+  prune?: PruneTrace;
   subgraph?: { joins: SubgraphPayload['joins']; totalCost: number; disconnected?: boolean };
   planner?: PlannerTrace;
   compiler?: CompileTraceEntry[];
@@ -166,12 +169,18 @@ function anchorNode(deps: PipelineDeps) {
 function subgraphNode(deps: PipelineDeps) {
   return async function subgraph(state: PipelineStateT): Promise<Update> {
     const set = state.anchorSet!;
+    // S1.5 semantic pruning: drop recall-favoring terminals the question doesn't
+    // SPECIFICALLY ground, BEFORE Steiner routes (the prune is over the terminal set
+    // only — Steiner still traverses unanchored bridges). `deriveAnchoredColumns` stays
+    // on the FULL set: pruned-away classes never enter the tree, so their columns are inert.
+    const { terminals: prunedTerminals, trace: pruneTrace } = pruneTerminals(set);
     const anchoredColumns = deriveAnchoredColumns(set);
-    const payload = extractSubgraph(deps.graph, set.terminals, [], deps.capabilities, {
+    const payload = extractSubgraph(deps.graph, prunedTerminals, [], deps.capabilities, {
       ...deps.extractOpts,
       anchoredColumns,
     });
     const traces: PipelineTraces = {
+      prune: pruneTrace,
       subgraph: { joins: payload.joins, totalCost: payload.totalCost, disconnected: payload.disconnected },
     };
     if (payload.disconnected) {

@@ -127,6 +127,99 @@ describe('Stage 3a — planner: prompt is versioned + payload-scoped', () => {
   });
 });
 
+describe('Stage 3a — planner: value-grounding filter literals against sampleValues (ADR-009)', () => {
+  // Real Stage-2 payloads with the relevant columns retained (anchoring mirrors Stage-1).
+  const driversPayload = () => payloadFor(['drivers'], { anchored: { drivers: ['nationality', 'surname', 'driverid'] } });
+  const qualifyingPayload = () => payloadFor(['qualifying'], { anchored: { qualifying: ['position'] } });
+  const NAT = prop('drivers', 'nationality');
+
+  it('VG1. ungrounded enum value → rejected → option pool surfaced → corrected value passes', async () => {
+    const payload = driversPayload();
+    // Sanity: nationality is an exhaustive enum carried in full (>15) — value-grounding will fire.
+    const nat = payload.classes.flatMap((c) => c.properties).find((p) => p.col === 'nationality')!;
+    expect(nat.sampleValues!.length).toBe(nat.distinctCount);
+    expect(nat.sampleValues!.length).toBeGreaterThan(15);
+
+    const bad: MetricQueryIR = { select: [{ property: NAT }], filters: [{ property: NAT, op: '=', value: 'Britishish' }] };
+    const good: MetricQueryIR = { select: [{ property: NAT }], filters: [{ property: NAT, op: '=', value: 'British' }] };
+    const llm = fakeReturning(
+      { when: (u) => !u.includes(REPAIR_MARK), respond: () => bad },
+      { when: (u) => u.includes(REPAIR_MARK), respond: () => good },
+    );
+
+    const res = await planQuery('Japanese drivers', payload, { llm });
+
+    expect(res.trace.attempts[0]!.ok).toBe(false);
+    const issue = res.trace.attempts[0]!.issues?.find((i) => i.startsWith('filters.0.value'));
+    expect(issue).toBeTruthy();
+    expect(issue).toContain('Britishish');
+    expect(issue).toContain('British'); // the option pool (real sample values) is surfaced
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.trace.attempts.length).toBe(2);
+  });
+
+  it('VG2. grounded value passes; normalized value passes AND is rewritten to the canonical sample', async () => {
+    const payload = driversPayload();
+
+    const exact: MetricQueryIR = { select: [{ property: NAT }], filters: [{ property: NAT, op: '=', value: 'British' }] };
+    const resExact = await planQuery('q', payload, { llm: fakeReturning({ when: () => true, respond: () => exact }) });
+    expect(resExact.ok).toBe(true);
+
+    // 'british' matches only after normalization → accepted AND rewritten to 'British' in the SQL.
+    const lower: MetricQueryIR = { select: [{ property: NAT }], filters: [{ property: NAT, op: '=', value: 'british' }] };
+    const resLower = await planQuery('q', payload, { llm: fakeReturning({ when: () => true, respond: () => lower }) });
+    expect(resLower.ok).toBe(true);
+    if (!resLower.ok) return;
+    const filter = resLower.ir.filters![0]!;
+    expect(filter.value).toBe('British'); // canonical rewrite reached the IR (transform fired, new object)
+    const { sql } = compile(resLower.ir, payload);
+    expect(sql).toContain("'British'");
+    expect(sql).not.toContain("'british'");
+  });
+
+  it('VG3. a RANGE op is never value-grounded — qualifying.position >= 16 stays legal', async () => {
+    const payload = qualifyingPayload();
+    const POS = prop('qualifying', 'position');
+    // position IS an exhaustive enum in the fixture; the op-gate (not the column type) is the guard.
+    const posCol = payload.classes.flatMap((c) => c.properties).find((p) => p.col === 'position')!;
+    expect(posCol.sampleValues!.length).toBe(posCol.distinctCount);
+    const ir: MetricQueryIR = { select: [{ property: POS }], filters: [{ property: POS, op: '>=', value: 16 }] };
+    const res = await planQuery('drivers eliminated', payload, { llm: fakeReturning({ when: () => true, respond: () => ir }) });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.trace.attempts.length).toBe(1); // no repair
+  });
+
+  it('VG4. a non-enumerable (high-cardinality) column is not grounded — surname filter passes', async () => {
+    const payload = driversPayload();
+    const SURNAME = prop('drivers', 'surname'); // distinctCount 784, no sampleValues → not enumerable
+    const ir: MetricQueryIR = { select: [{ property: SURNAME }], filters: [{ property: SURNAME, op: '=', value: 'Vettel' }] };
+    const res = await planQuery('q', payload, { llm: fakeReturning({ when: () => true, respond: () => ir }) });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.trace.attempts.length).toBe(1);
+  });
+
+  it('VG5. a column with no sampleValues (id) is not grounded — passes (safe default)', async () => {
+    const payload = driversPayload();
+    const ID = prop('drivers', 'driverid');
+    const ir: MetricQueryIR = { select: [{ property: ID }], filters: [{ property: ID, op: '=', value: 830 }] };
+    const res = await planQuery('q', payload, { llm: fakeReturning({ when: () => true, respond: () => ir }) });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.trace.attempts.length).toBe(1);
+  });
+
+  it('VG6. the IRI leash is unchanged — an out-of-payload column still triggers repair (regression)', async () => {
+    const payload = newPayload();
+    const res = await planQuery('q', payload, { llm: fakeReturning({ when: () => true, respond: () => badIr }) });
+    expect(res.trace.attempts[0]!.ok).toBe(false);
+    expect(res.trace.attempts[0]!.issues?.some((i) => i.includes('pitstops'))).toBe(true);
+    expect(res.trace.attempts.length).toBeGreaterThan(1);
+  });
+});
+
 describe('Stage 3a — planner: generalized shapes (projection) + leash covers select', () => {
   it('7. a projection IR passes the leash and compiles; an out-of-payload select column triggers repair', async () => {
     const payload = newPayload();

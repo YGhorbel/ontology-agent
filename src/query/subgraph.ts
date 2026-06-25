@@ -111,13 +111,24 @@ interface MetaEdge {
   u: string;
   v: string;
   dist: number;
+  hops: number;
   iris: string;
   edges: JoinEdge[];
 }
 
-/** Deterministic ordering of meta-edges: distance, then ordered source-IRI list. */
+/**
+ * Deterministic ordering of meta-edges, as a lexicographic objective tuple:
+ *   1. distance (total path COST — primary; confidence/provenance weights win first),
+ *   2. hops (EDGE COUNT — secondary: prefer fewer joins among cost-tied paths; this is the
+ *      sole place tree cardinality is decided, since the metric-closure MST fixes the node
+ *      set and the final spanning tree then has nodes−1 edges regardless),
+ *   3. ordered source-IRI list (the existing lexicographic determinism tie-break).
+ * Node count is omitted: for a tree/simple path nodes = edges + 1, so `hops` subsumes it.
+ * Cardinality is a strictly secondary key — a costlier fewer-edge path NEVER beats a cheaper one.
+ */
 function metaLess(a: MetaEdge, b: MetaEdge): number {
   if (a.dist !== b.dist) return a.dist - b.dist;
+  if (a.hops !== b.hops) return a.hops - b.hops;
   return a.iris < b.iris ? -1 : a.iris > b.iris ? 1 : 0;
 }
 
@@ -161,8 +172,11 @@ function canonicalPairs(e: JoinEdge): [string, string][] {
 
 /**
  * Trim a class node's columns to: (a) join keys, (b) anchored columns, and (c) for TERMINAL
- * classes only, their enum columns' sample values (truncated to 15). Sample values are carried
- * only by terminal classes; bridge-node columns never carry them (context discipline).
+ * classes only, their enum columns' sample values. Sample values are carried only by terminal
+ * classes; bridge-node columns never carry them (context discipline). An EXHAUSTIVE enum
+ * (`distinctCount <= sampleValues.length` — the generator only emits samples when distinctCount is
+ * within the enum cap, so this means the full domain is listed) keeps its FULL domain so the leash
+ * can value-ground filter literals; a non-exhaustive sampled column is truncated to 15.
  */
 function trimColumns(
   node: ClassNode,
@@ -182,9 +196,11 @@ function trimColumns(
     if (!keep.has(prop.col)) continue;
     const clone: ColumnProp = { ...prop };
     if (clone.sampleValues) {
-      // Only terminals carry sample values, and never more than 15.
-      if (isTerminal) clone.sampleValues = clone.sampleValues.slice(0, MAX_SAMPLE_VALUES);
-      else delete clone.sampleValues;
+      if (isTerminal) {
+        // Exhaustive enums keep the FULL domain (value-grounding needs it); otherwise cap at 15.
+        const exhaustive = clone.distinctCount !== undefined && clone.distinctCount <= clone.sampleValues.length;
+        if (!exhaustive) clone.sampleValues = clone.sampleValues.slice(0, MAX_SAMPLE_VALUES);
+      } else delete clone.sampleValues;
     }
     out.push(clone);
   }
@@ -253,7 +269,7 @@ export function extractSubgraph(
         disconnected = true;
         continue;
       }
-      metaEdges.push({ u, v, dist: info.cost, iris: info.iris.join('|'), edges: info.edges });
+      metaEdges.push({ u, v, dist: info.cost, hops: info.hops, iris: info.iris.join('|'), edges: info.edges });
     }
   }
 
