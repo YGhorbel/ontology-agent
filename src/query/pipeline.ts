@@ -26,8 +26,9 @@ import { StateGraph, START, END, Annotation } from '@langchain/langgraph';
 import { classIri } from '../types/ontology.js';
 import { anchorQuestion } from './anchor.js';
 import type { AnchorIndex } from './anchor-index.js';
-import type { AnchorSet, AnchorOpts, AnchorTrace } from './anchor-model.js';
+import type { AnchorSet, AnchorOpts, AnchorTrace, SuperlativeDirective } from './anchor-model.js';
 import { extractSubgraph } from './subgraph.js';
+import { groundSuperlatives } from './superlative.js';
 import { pruneTerminals } from './prune.js';
 import type { PruneTrace } from './prune.js';
 import type { OntologyGraph, SubgraphPayload, CapabilityRef, ExtractOpts } from './graph-model.js';
@@ -51,6 +52,8 @@ export interface PipelineTraces {
   anchor?: AnchorTrace;
   prune?: PruneTrace;
   subgraph?: { joins: SubgraphPayload['joins']; totalCost: number; disconnected?: boolean };
+  /** Stage-1.x superlative groundings (empty/absent when no superlative fired). */
+  superlative?: SuperlativeDirective[];
   planner?: PlannerTrace;
   compiler?: CompileTraceEntry[];
 }
@@ -175,6 +178,15 @@ function subgraphNode(deps: PipelineDeps) {
     // on the FULL set: pruned-away classes never enter the tree, so their columns are inert.
     const { terminals: prunedTerminals, trace: pruneTrace } = pruneTerminals(set);
     const anchoredColumns = deriveAnchoredColumns(set);
+    // Stage-1.x superlative grounding: a superlative over a single-orderable class adds that one
+    // ranking column to the anchored set so the trimmer keeps it (the planner can then bind it).
+    // Merge-only — the AnchorSet is untouched, so prune/Steiner/menu behaviour is unchanged.
+    const superlatives = groundSuperlatives(state.question, prunedTerminals, deps.graph);
+    for (const d of superlatives) {
+      const cols = anchoredColumns.get(d.classIri) ?? [];
+      if (!cols.includes(d.column)) cols.push(d.column);
+      anchoredColumns.set(d.classIri, cols);
+    }
     const payload = extractSubgraph(deps.graph, prunedTerminals, [], deps.capabilities, {
       ...deps.extractOpts,
       anchoredColumns,
@@ -182,6 +194,7 @@ function subgraphNode(deps: PipelineDeps) {
     const traces: PipelineTraces = {
       prune: pruneTrace,
       subgraph: { joins: payload.joins, totalCost: payload.totalCost, disconnected: payload.disconnected },
+      ...(superlatives.length > 0 ? { superlative: superlatives } : {}),
     };
     if (payload.disconnected) {
       return { payload, failure: { stage: 'subgraph', reason: 'disconnected' }, traces };
