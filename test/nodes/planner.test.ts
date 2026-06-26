@@ -10,10 +10,15 @@
  */
 import { describe, it, expect } from 'vitest';
 import { compile } from '../../src/query/compiler.js';
-import { specializeIrSchema, type MetricQueryIR } from '../../src/query/ir.js';
+import { specializeIrSchema, payloadIris, type MetricQueryIR } from '../../src/query/ir.js';
 import { planQuery } from '../../src/query/planner.js';
 import { makeFakeLlm, type FakeResponse } from '../../src/llm/structured-llm.js';
-import { buildPlannerPrompt, PLANNER_PROMPT_VERSION, PLANNER_SYSTEM_V2 } from '../../src/prompts/planner.js';
+import {
+  buildPlannerPrompt,
+  renderPayloadMenu,
+  PLANNER_PROMPT_VERSION,
+  PLANNER_SYSTEM_V2,
+} from '../../src/prompts/planner.js';
 import { payloadFor, prop, ir1, CAP_AVG_LAP_MS } from '../fixtures/ir/index.js';
 
 const newPayload = () => payloadFor(['laptimes', 'constructors'], { anchored: { constructors: ['nationality'] } });
@@ -217,6 +222,62 @@ describe('Stage 3a — planner: value-grounding filter literals against sampleVa
     expect(res.trace.attempts[0]!.ok).toBe(false);
     expect(res.trace.attempts[0]!.issues?.some((i) => i.includes('pitstops'))).toBe(true);
     expect(res.trace.attempts.length).toBeGreaterThan(1);
+  });
+});
+
+describe('Stage 3a — planner menu surfaces column semantics (ADR-010)', () => {
+  // dob must be anchored: it has no sampleValues (821 distinct dates, not an enum), so a single-terminal
+  // payload would not auto-retain it. The other three mirror Stage-1 anchoring for the assertions.
+  const driversPayload = () =>
+    payloadFor(['drivers'], { anchored: { drivers: ['dob', 'driverid', 'nationality', 'surname'] } });
+  const lineFor = (menu: string, needle: string): string =>
+    menu.split('\n').find((l) => l.includes(needle)) ?? '';
+
+  it('M1. surfaces prefLabel + description (the real directional signal) and enumerable samples', () => {
+    const menu = renderPayloadMenu(driversPayload());
+
+    // dob is now distinguishable from the PK: prefLabel "Date of birth" + the date RANGE — this is the
+    // load-bearing signal (the committed fixture has NO explicit "younger" clause; the label + range is it).
+    const dob = lineFor(menu, 'qsl:property/drivers/dob');
+    expect(dob).toContain('"Date of birth"');
+    expect(dob.toLowerCase()).toContain('date of birth');
+    expect(dob).toContain('1896-12-28'); // the date range that marks dob as orderable-by-age
+    // Contrast: driverid reads as an ID (range [1..841]) — the planner can now tell them apart.
+    const driverid = lineFor(menu, 'qsl:property/drivers/driverid');
+    expect(driverid).toContain('"Driver ID"');
+    expect(driverid).toContain('[1..841]');
+
+    // nationality (exhaustive 41-value enum) surfaces its option pool; British is in the values.
+    const nat = lineFor(menu, 'qsl:property/drivers/nationality');
+    expect(nat).toContain('values:');
+    expect(nat).toContain('British');
+  });
+
+  it('M2. the dob signal reaches the model — buildPlannerPrompt carries prefLabel + description', () => {
+    // The planner uses a fake LLM that does not reason over the menu, so we assert the SIGNAL is present
+    // (form B). The live behaviour (IR orders by dob ASC) is proven by the `pnpm ask` re-run in the report.
+    const prompt = buildPlannerPrompt('who is the oldest driver', driversPayload());
+    expect(prompt).toContain('"Date of birth"');
+    expect(prompt).toContain("Driver's date of birth");
+    expect(prompt).toContain('[1896-12-28..1998-10-29]');
+  });
+
+  it('M3. enumerable column shows values; non-enumerable (high-cardinality) does not', () => {
+    const menu = renderPayloadMenu(driversPayload());
+    // surname: distinctCount 784, no sampleValues → not enumerable → never dumps a value list.
+    expect(lineFor(menu, 'qsl:property/drivers/surname')).not.toContain('values:');
+    // nationality: exhaustive enum → does.
+    expect(lineFor(menu, 'qsl:property/drivers/nationality')).toContain('values:');
+  });
+
+  it('M4. menu == leash: the offered IRI set is unchanged (annotations only)', () => {
+    const payload = driversPayload();
+    const menu = renderPayloadMenu(payload);
+    const { properties, capabilities } = payloadIris(payload);
+    // Every offered IRI is exactly the leash set — no IRI added or removed by the annotations.
+    const offered = new Set([...menu.matchAll(/IRI: (\S+)/g)].map((m) => m[1]!));
+    const expected = new Set([...properties, ...capabilities]);
+    expect(offered).toStrictEqual(expected);
   });
 });
 

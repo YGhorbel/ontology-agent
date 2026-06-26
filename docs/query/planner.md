@@ -37,6 +37,42 @@ So generation is steered by the **prompt's IRI menu** (built from `payloadIris(p
 equals the leash by construction), and the narrowed schema remains the authority — at the validate
 step, which is exactly where the repair loop reads it.
 
+## The menu carries column *meaning*, not just IRIs ([ADR-010](../adr/010-planner-menu-semantics.md))
+
+`renderPayloadMenu` ([src/prompts/planner.ts](../../src/prompts/planner.ts)) renders each property line
+with the column's **surfaced semantics** — not just `table.column — IRI`:
+
+```
+- drivers.dob — IRI: qsl:property/drivers/dob — "Date of birth" — Driver's date of birth (…), 821 distinct dates with range [1896-12-28..1998-10-29].
+- drivers.nationality — IRI: … — "Nationality" — Driver nationality (…), a 41-value enumeration … — values: American, …, British, … (+26 more)
+```
+
+Per property the line appends, when present: the **prefLabel** (`skos:prefLabel`), a **description**
+(`rdfs:comment`, char-capped — see below), and — only for an **enumerable** column (reusing the exact
+`isEnumerable` predicate from value-grounding) — its **sample values**. The generator already wrote all
+of this; `ColumnProp` now carries `prefLabel` / `altLabel` / `description` (read in `columnPropOf`,
+[src/query/graph-build.ts](../../src/query/graph-build.ts)) so the consumer can show it.
+
+**Why.** The planner binds superlatives/filters using a column's **meaning**, not just which IRIs are
+legal. "Oldest driver" is a ranking over `drivers.dob` (a date of birth) — but if the menu shows only
+`drivers.dob — IRI: …` and `drivers.driverid — IRI: …`, both are equally legal sortable columns and the
+planner grabbed the PK. Surfacing prefLabel "Date of birth" + the date range `[1896-12-28..1998-10-29]`
+(vs `driverid`'s "Driver ID" + `[1..841]`) is what lets it pick `dob ASC`. This is **Shape A** —
+general-language superlatives that map to a ranking over a semantically-identified column. Domain-specific
+**Shape B** cutoffs ("eliminated in Q1 = bottom 5 by q1") need knowledge beyond a column description and
+stay out of scope.
+
+**Bounds (token budget).** Descriptions are capped at `QUERY_MENU_DESC_CAP` chars (default **160**;
+env-overridable). The cap is a **char-cap, not a first-sentence trim**, so a trailing directional clause
+or range survives truncation — on this fixture every comment is < 160 chars, so nothing truncates.
+Sample lists cap at 15 with a `(+N more)`. **Bridge** (non-terminal) columns render **terse** (prefLabel
+only): they are join context, not selection targets, and Stage 2 already stripped their samples.
+`altLabel` is carried but **not** rendered (prefLabel + description already disambiguate).
+
+**menu == leash is preserved.** The property lines still iterate `payloadIris(payload)` — the same IRI
+set, same order. The annotations are appended to each line; **no IRI is added or removed**, so
+`specializeIrSchema` accepts/rejects exactly as before (covered by test `M4`).
+
 ## Value-grounding: filter literals must be real values ([ADR-009](../adr/009-value-grounding.md))
 
 The leash also constrains filter **values**, not just IRIs. The IRI leash stops the planner inventing
