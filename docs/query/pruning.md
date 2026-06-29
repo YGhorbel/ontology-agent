@@ -100,3 +100,26 @@ Q: …drivers eliminated in the first period in race number 20
   DROPPED    : circuits, constructors, pitstops, results, constructorresults
   joins BEFORE: 8 (9 tables)   AFTER: 3 (4 tables)
 ```
+
+## Stage 1.6 — FK-symmetric grain-competitor sibling survival (ADR-014)
+
+The specificity prune keeps **one** of two FK-symmetric siblings by anchor-provenance, which is
+**grain-blind**. When `constructorresults` and `constructorstandings` both declare a single FK →
+`constructors` (identical shape) and both carry an anchored `points`, the Steiner tie-break
+([ADR-009](../adr/009-steiner-tiebreak.md)) cannot separate them either — so which survives is a
+**coin-flip** (950 and 994 drop opposite siblings). Pruning the wrong one makes the correct fact table
+**absent from the payload**, where no downstream ranker (Move 1, ADR-013) can recover it.
+
+`rescueFkSymmetricSiblings` ([../../src/query/sibling-survival.ts](../../src/query/sibling-survival.ts))
+runs **after** the prune (in `subgraphNode`) and re-admits the dropped sibling iff:
+
+1. **declared-FK symmetry** — equal declared-neighbour sets (discovered/inferred fact-to-fact edges are
+   excluded; they are profiler artifacts and asymmetric);
+2. a **shared anchored, non-key** same-name column (join keys — PK ∪ FK `columnPairs` columns — are
+   excluded, so `constructorid`/`raceid` never trigger it); and
+3. **≥1 member survived the prune** (the narrowing gate — never re-introduce a group the prune fully
+   rejected, so the over-join above is not reopened).
+
+Both siblings then reach the menu (Move 1 tags the cumulative one), and back-prune
+([ADR-012](../adr/012-from-back-prune.md)) drops whichever the plan does not reference (it is an
+FK-symmetric degree-1 leaf). Surfaced on the pipeline state as `traces.siblingSurvival`.

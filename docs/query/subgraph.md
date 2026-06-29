@@ -118,3 +118,13 @@ For each class in the tree, keep **only**:
 
 Everything else is dropped. Example: `results` has ~18 columns; if it is on the tree it carries its
 join keys (e.g. `driverid`, `constructorid`) and not `fastestlapspeed`/`positiontext`/etc.
+
+## Candidate-set widening: FK-symmetric grain-competitor siblings (ADR-014)
+
+The terminal set handed to extraction is the prune's `kept` **widened** by
+`rescueFkSymmetricSiblings` (Stage 1.6): when two terminals are FK-symmetric over **declared** FKs and
+share an anchored **non-key** same-name column (e.g. `constructorresults` and `constructorstandings`,
+both → `constructors`, both `points`), and at least one survived the prune, **both** are kept as
+terminals. Each is then a degree-1 leaf off the shared bridge, so trimming keeps both siblings' anchored
+measure columns (with `temporality`) for the menu, and back-prune later drops whichever the plan omits.
+This is the retrieval layer that activates Move 1 ([ADR-013](../adr/013-menu-grain-distinguishers.md)).
