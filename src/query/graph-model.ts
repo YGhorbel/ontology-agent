@@ -26,7 +26,13 @@ export interface ColumnProp {
    * columns may live on a CALENDAR table reached by a declared FK (e.g. races.year / races.round),
    * not on the measure table itself.
    */
-  temporalityEvidence?: { partitionColumns: string[]; orderColumn: string; ratio: number };
+  temporalityEvidence?: {
+    partitionColumns: string[];
+    orderColumn: string;
+    signal?: 'monotonic' | 'carry-forward';
+    ratio?: number;
+    vnRatio?: number;
+  };
   /**
    * Enum/profile sample values. For terminal classes the payload carries the FULL domain when the
    * enum is exhaustive (`distinctCount <= sampleValues.length` — the generator only emits samples

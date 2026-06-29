@@ -20,6 +20,7 @@ import { generateCandidatePairs } from '../../profiling/candidate-pairs.js';
 import { discoverForeignKeys } from '../../profiling/foreign-keys.js';
 import { buildColumnFacts } from '../../profiling/column-facts.js';
 import { detectCumulativeMeasures } from '../../profiling/monotonicity.js';
+import { detectSnapshotMeasures } from '../../profiling/snapshot.js';
 import { discoverCompositeForeignKeys } from '../../profiling/composite-fk.js';
 import type { OntologyState, OntologyStateUpdate } from '../state.js';
 
@@ -44,16 +45,22 @@ export function createRelationshipDiscoverNode(connect: SchemaConnector) {
       // Cumulative-measure detection (Fix 3): tag running-total measures so node 4 never
       // SUMs them. Uses the discovered FK graph for partition/order; runs once, here in 1b.
       const cumulative = await detectCumulativeMeasures(client, schema, foreignKeyCandidates, profiles);
+      // As-of-event snapshot detection (ADR-015): generalize the tag to NON-monotonic carried-forward
+      // state columns (e.g. a championship `position`) the monotonicity probe misses, so the planner
+      // menu (ADR-013) is no longer grain-blind for the snapshot family. Runs after the cumulative
+      // probe and reads its map so already-cumulative columns keep their stronger tag and are skipped.
+      const snapshot = await detectSnapshotMeasures(client, schema, foreignKeyCandidates, profiles, cumulative);
       for (const fact of columnFacts) {
-        const evidence = cumulative.get(`${fact.table} ${fact.column}`);
-        if (evidence) {
+        const key = `${fact.table} ${fact.column}`;
+        // A monotonic cumulative measure keeps its stronger tag; never downgrade it to a plain snapshot.
+        const cumulativeEv = cumulative.get(key);
+        const snapshotEv = cumulativeEv ? undefined : snapshot.get(key);
+        if (cumulativeEv) {
           fact.temporality = 'cumulative-snapshot';
-          // Structured evidence (Part 2b): partition/order columns + observed monotonic ratio.
-          fact.temporalityEvidence = {
-            partitionColumns: evidence.partitionColumns,
-            orderColumn: evidence.orderColumn,
-            ratio: evidence.ratio,
-          };
+          fact.temporalityEvidence = cumulativeEv;
+        } else if (snapshotEv) {
+          fact.temporality = 'as-of-event-snapshot';
+          fact.temporalityEvidence = snapshotEv;
         }
       }
       // Bounded composite (2-column) FK discovery (Fix 7): direct multi-key joins between

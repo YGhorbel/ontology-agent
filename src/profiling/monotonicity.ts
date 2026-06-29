@@ -23,10 +23,10 @@ import type { ColumnProfile } from '../types/column-profile.js';
 import type { ForeignKeyCandidate } from '../types/foreign-key-candidate.js';
 import { trustedUnaryFks } from './trusted-fk.js';
 
-const quoteIdent = (id: string): string => `"${id.replace(/"/g, '""')}"`;
+export const quoteIdent = (id: string): string => `"${id.replace(/"/g, '""')}"`;
 
 const NUMERIC_TYPES = new Set(['smallint', 'integer', 'bigint', 'numeric', 'decimal', 'real', 'double precision']);
-const isNumericType = (t: string): boolean => NUMERIC_TYPES.has(t.toLowerCase());
+export const isNumericType = (t: string): boolean => NUMERIC_TYPES.has(t.toLowerCase());
 const isTemporalType = (t: string): boolean => /date|time/i.test(t);
 const isSeasonName = (name: string): boolean => /season|year/i.test(name);
 const isRoundName = (name: string): boolean => /round|sequence|order|^lap$/i.test(name);
@@ -44,7 +44,12 @@ const stmtTimeoutMs = (): number => {
 export interface TemporalityEvidence {
   partitionColumns: string[];
   orderColumn: string;
-  ratio: number;
+  /** How the tag was earned (ADR-015). Omitted ⇒ legacy monotonic for back-compat. */
+  signal?: 'monotonic' | 'carry-forward';
+  /** Monotonic-non-decreasing fraction (monotonic signal). */
+  ratio?: number;
+  /** von Neumann ratio var(Δ)/var(v) (carry-forward signal); lower ⇒ smoother carried-forward state. */
+  vnRatio?: number;
 }
 
 /** A calendar table carries BOTH a season-like grouping and a round/date-like order. */
@@ -125,6 +130,37 @@ export function buildMonotonicQuery(table: string, measure: string, plan: Sequen
   );
 }
 
+/** Build the "table col" -> uniqueness-ratio lookup the measure filter reads. */
+export function uniquenessByColumn(profiles: ColumnProfile[]): Map<string, number | null> {
+  const uniqByCol = new Map<string, number | null>();
+  for (const p of profiles) uniqByCol.set(`${p.table} ${p.column}`, p.uniquenessRatio);
+  return uniqByCol;
+}
+
+/**
+ * The non-key numeric measure/state columns of a table under its sequence plan: numeric type,
+ * not the sequence-join column, not an entity partition column, and not a unique/key column.
+ * Shared by both temporality probes so they consider exactly the same candidate set.
+ */
+export function candidateMeasureColumns(
+  table: Table,
+  plan: SequencePlan,
+  uniqByCol: Map<string, number | null>,
+): Table['columns'] {
+  const reserved = new Set<string>([plan.joinFromColumn, ...plan.entityColumns]);
+  return table.columns.filter((c) => {
+    if (reserved.has(c.name)) return false;
+    if (!isNumericType(c.type)) return false;
+    const uniq = uniqByCol.get(`${table.name} ${c.name}`);
+    return uniq === null || uniq === undefined || uniq < 1; // not a unique/key column
+  });
+}
+
+/** Partition columns (entity FKs + season group) of a sequence plan. */
+export function planPartitionColumns(plan: SequencePlan): string[] {
+  return [...plan.entityColumns, ...(plan.groupColumn ? [plan.groupColumn] : [])];
+}
+
 /**
  * Probe every qualifying table/measure. Returns a map "table col" -> evidence for columns
  * whose values are monotonic non-decreasing along the calendar sequence (cumulative).
@@ -137,8 +173,7 @@ export async function detectCumulativeMeasures(
 ): Promise<Map<string, TemporalityEvidence>> {
   const out = new Map<string, TemporalityEvidence>();
   const minRatio = monotonicMinRatioFromEnv();
-  const uniqByCol = new Map<string, number | null>();
-  for (const p of profiles) uniqByCol.set(`${p.table} ${p.column}`, p.uniquenessRatio);
+  const uniqByCol = uniquenessByColumn(profiles);
 
   await q.query(`SET LOCAL statement_timeout = ${stmtTimeoutMs()}`).catch(() => undefined);
 
@@ -146,15 +181,8 @@ export async function detectCumulativeMeasures(
     const plan = deriveSequencePlan(table, schema, fks);
     if (!plan) continue;
 
-    const reserved = new Set<string>([plan.joinFromColumn, ...plan.entityColumns]);
-    const measures = table.columns.filter((c) => {
-      if (reserved.has(c.name)) return false;
-      if (!isNumericType(c.type)) return false;
-      const uniq = uniqByCol.get(`${table.name} ${c.name}`);
-      return uniq === null || uniq === undefined || uniq < 1; // not a unique/key column
-    });
-
-    const partitionColumns = [...plan.entityColumns, ...(plan.groupColumn ? [plan.groupColumn] : [])];
+    const measures = candidateMeasureColumns(table, plan, uniqByCol);
+    const partitionColumns = planPartitionColumns(plan);
     for (const measure of measures) {
       try {
         const { rows } = await q.query(buildMonotonicQuery(table.name, measure.name, plan));
@@ -163,7 +191,7 @@ export async function detectCumulativeMeasures(
         if (tot <= 0) continue; // no evidence — do not guess
         const ratio = (tot - neg) / tot;
         if (ratio >= minRatio) {
-          out.set(`${table.name} ${measure.name}`, { partitionColumns, orderColumn: plan.orderColumn, ratio });
+          out.set(`${table.name} ${measure.name}`, { partitionColumns, orderColumn: plan.orderColumn, signal: 'monotonic', ratio });
         }
       } catch {
         // A probe failure (timeout / type quirk) is non-fatal: skip this measure.

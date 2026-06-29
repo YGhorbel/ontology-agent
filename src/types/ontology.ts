@@ -137,15 +137,20 @@ const DatatypePropertyNodeSchema = z.object({
   'qsl:sampleValues': z.array(z.string()).optional(),
   /** A sentinel value (e.g. '-', 'N/A', '') used in the data to mean unknown/missing. */
   'qsl:nullPlaceholder': z.string().optional(),
-  /** Marks a measure whose values are cumulative running totals (SUM double-counts; use MAX/last-per-group). */
-  'qsl:temporality': z.enum(['cumulative-snapshot']).optional(),
-  /** Structured evidence for the temporality tag (Part 2b): partition (entity+season) columns,
-   *  the sequence order column, and the observed monotonic ratio. */
+  /** Grain-type of a measure/state column: `cumulative-snapshot` (monotonic running total,
+   *  de-cumulated by the compiler) or `as-of-event-snapshot` (non-monotonic carried-forward state,
+   *  e.g. a championship rank — a menu grain distinguisher, never de-cumulated). ADR-015. */
+  'qsl:temporality': z.enum(['cumulative-snapshot', 'as-of-event-snapshot']).optional(),
+  /** Structured evidence for the temporality tag: partition (entity+season) columns, the sequence
+   *  order column, the detection signal, and a signal-specific metric (monotonic `ratio` or
+   *  carry-forward `vnRatio`). */
   'qsl:temporalityEvidence': z
     .object({
       partitionColumns: z.array(z.string()),
       orderColumn: z.string(),
-      ratio: z.number(),
+      signal: z.enum(['monotonic', 'carry-forward']).optional(),
+      ratio: z.number().optional(),
+      vnRatio: z.number().optional(),
     })
     .optional(),
 });

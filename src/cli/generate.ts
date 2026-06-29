@@ -13,7 +13,7 @@
  * ontology store (DATABASE_URL), records the run, prints a summary, and exits
  * non-zero if validation did not pass.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import 'dotenv/config';
 import { buildProductionGraph } from '../agent/graph.js';
@@ -21,6 +21,7 @@ import { createOntologyStore, type RunStatus } from '../storage/ontology-store.j
 import { toTrig } from '../serialize/turtle.js';
 import { partitionDataset } from '../agent/assemble.js';
 import { buildOntologyHeader } from '../serialize/ontology-header.js';
+import { freezeLlmFields } from '../serialize/artifact-merge.js';
 import type { OntologyDataset, OntologyJsonLd, ValidationError } from '../types/ontology.js';
 
 function parseArg(flag: string): string | undefined {
@@ -114,12 +115,22 @@ async function main(): Promise<number> {
       buildNumber: Number(process.env.ONTOLOGY_BUILD_NUMBER) || Math.floor(startedAt.getTime() / 1000),
       createdIso: startedAt.toISOString(),
     });
-    const dataset: OntologyDataset = {
+    let dataset: OntologyDataset = {
       '@context': ontology['@context'],
       'qsl:ontology': header,
       '@graph': assertedGraph,
       ...(exportMode === 'full' && candidateGraph.length > 0 ? { 'qsl:candidateGraph': candidateGraph } : {}),
     };
+
+    // Blast-radius control (ADR-015): when regenerating to refresh a frozen fixture, carry the
+    // nondeterministic LLM free-text + capability set over from the prior artifact so the only delta
+    // is the deterministic structure + the new temporality tags. Diff with scripts/temporality-diff.ts.
+    const freezeFrom = parseArg('--freeze-text-from');
+    if (freezeFrom) {
+      const prior = JSON.parse(readFileSync(resolve(freezeFrom), 'utf8')) as OntologyDataset;
+      dataset = freezeLlmFields(dataset, prior);
+      console.log(`[ontology-generator] froze LLM free-text + capabilities from ${freezeFrom}`);
+    }
 
     // Write JSON-LD dataset + TriG (asserted default graph + named candidate graph).
     mkdirSync(outDir, { recursive: true });
