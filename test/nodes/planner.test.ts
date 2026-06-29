@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { compile } from '../../src/query/compiler.js';
 import { specializeIrSchema, payloadIris, type MetricQueryIR } from '../../src/query/ir.js';
+import type { SubgraphPayload } from '../../src/query/graph-model.js';
 import { planQuery } from '../../src/query/planner.js';
 import { makeFakeLlm, type FakeResponse } from '../../src/llm/structured-llm.js';
 import {
@@ -278,6 +279,125 @@ describe('Stage 3a — planner menu surfaces column semantics (ADR-010)', () => 
     const offered = new Set([...menu.matchAll(/IRI: (\S+)/g)].map((m) => m[1]!));
     const expected = new Set([...properties, ...capabilities]);
     expect(offered).toStrictEqual(expected);
+  });
+});
+
+describe('Stage 3a — planner menu surfaces column GRAIN distinguishers (ADR-013)', () => {
+  const lineFor = (menu: string, needle: string): string =>
+    menu.split('\n').find((l) => l.includes(needle)) ?? '';
+  // A temporality tag is `[lowercase words]`; profiled ranges (e.g. `[0..765]`) start with a digit and
+  // never match this, so it cleanly distinguishes a real grain tag from a description's numeric range.
+  const TEMPORALITY_TAG = /\[[a-z][a-z ]*\]/;
+
+  // The 950 family: two same-surface-name `points` columns whose grain differs. constructorstandings.points
+  // carries qsl:temporality "cumulative-snapshot"; constructorresults.points does not (per-row value).
+  const pointsPayload = () =>
+    payloadFor(['constructorstandings', 'constructorresults'], {
+      anchored: { constructorstandings: ['points'], constructorresults: ['points'] },
+    });
+
+  it('D1. distinct lines: the cumulative column carries the temporality tag + running-total clause; the per-row column carries its own clause and NO tag', () => {
+    const menu = renderPayloadMenu(pointsPayload());
+
+    const cumulative = lineFor(menu, 'qsl:property/constructorstandings/points');
+    expect(cumulative).toContain('[cumulative snapshot]');
+    expect(cumulative.toLowerCase()).toMatch(/running total|cumulative/);
+
+    const perRow = lineFor(menu, 'qsl:property/constructorresults/points');
+    expect(perRow).toContain('per-row value, not a running total');
+    expect(perRow).not.toMatch(TEMPORALITY_TAG); // no spurious tag on a column without qsl:temporality
+
+    // The two lines are genuinely distinguishable now (the whole point of the brick).
+    expect(cumulative).not.toBe(perRow);
+  });
+
+  it('D2. the temporality tag renders only when qsl:temporality is present (general, no hardcoded values)', () => {
+    const menu = renderPayloadMenu(pointsPayload());
+    expect(lineFor(menu, 'qsl:property/constructorstandings/points')).toContain('[cumulative snapshot]');
+    expect(lineFor(menu, 'qsl:property/constructorresults/points')).not.toContain('[cumulative snapshot]');
+  });
+
+  it('D3. the distinguishing description clause survives the DESC_CAP (not truncated below the part that distinguishes)', () => {
+    const menu = renderPayloadMenu(pointsPayload());
+    // The clause that distinguishes per-row from cumulative must reach the model intact.
+    expect(lineFor(menu, 'qsl:property/constructorresults/points')).toContain('per-row value, not a running total');
+    expect(lineFor(menu, 'qsl:property/constructorstandings/points').toLowerCase()).toContain(
+      'not points awarded solely at that race',
+    );
+  });
+
+  it('D4. non-regression: a payload with no temporality renders no grain tag (existing menu output unchanged)', () => {
+    // drivers has no cumulative columns; dob carries a numeric date RANGE that must NOT be read as a tag.
+    const menu = renderPayloadMenu(
+      payloadFor(['drivers'], { anchored: { drivers: ['dob', 'driverid', 'nationality', 'surname'] } }),
+    );
+    expect(menu).not.toMatch(/\[(cumulative snapshot|point in time)\]/);
+    expect(lineFor(menu, 'qsl:property/drivers/dob')).toContain('1896-12-28'); // the date range still renders
+  });
+
+  it('D5. generality: a synthetic non-f1 column renders its temporality tag + description identically (no f1 hardcoding)', () => {
+    const synthetic: SubgraphPayload = {
+      classes: [
+        {
+          iri: 'qsl:class/widgets',
+          properties: [
+            {
+              col: 'status',
+              prefLabel: 'Status',
+              temporality: 'point-in-time',
+              description: 'current snapshot status (not the historical value)',
+            },
+          ],
+        },
+      ],
+      joins: [],
+      capabilities: [],
+      aggregateConfidence: 1,
+      bridgeNodes: [],
+      totalCost: 0,
+    };
+    const line = lineFor(renderPayloadMenu(synthetic), 'qsl:property/widgets/status');
+    expect(line).toContain('[point in time]'); // hyphen→space, generic for any DB's temporality value
+    expect(line).toContain('current snapshot status (not the historical value)');
+  });
+
+  it('D6. ADR-015: an as-of-event-snapshot value renders [as of event snapshot] (the position-family grain distinguisher reaches the menu)', () => {
+    // The generator now tags standings `position` columns `as-of-event-snapshot` (ADR-015). The renderer
+    // is value-agnostic, so the new tag surfaces with no renderer change — making the position family,
+    // previously tag-blind, distinguishable from a per-event sibling in the menu.
+    const synthetic: SubgraphPayload = {
+      classes: [
+        {
+          iri: 'qsl:class/driverstandings',
+          properties: [
+            { col: 'position', prefLabel: 'Standing position', temporality: 'as-of-event-snapshot', description: 'championship rank as-of the race' },
+          ],
+        },
+      ],
+      joins: [],
+      capabilities: [],
+      aggregateConfidence: 1,
+      bridgeNodes: [],
+      totalCost: 0,
+    };
+    const line = lineFor(renderPayloadMenu(synthetic), 'qsl:property/driverstandings/position');
+    expect(line).toContain('[as of event snapshot]');
+  });
+
+  it('D7. end-to-end: the regenerated fixture surfaces [as of event snapshot] on the standings position, not on the per-event sibling', () => {
+    // Real Stage-2 payload from the committed (ADR-015-regenerated) fixture: the standings position
+    // carries the as-of-event-snapshot tag, the per-event results.position carries none. This is the
+    // position-family menu becoming grain-NON-blind (the tier-2 deliverable reaching SQL-gen input).
+    const menu = renderPayloadMenu(
+      payloadFor(['driverstandings', 'results'], {
+        anchored: { driverstandings: ['position'], results: ['position'] },
+      }),
+    );
+    const standings = lineFor(menu, 'qsl:property/driverstandings/position');
+    const perEvent = lineFor(menu, 'qsl:property/results/position');
+    expect(standings).toContain('[as of event snapshot]');
+    expect(perEvent).not.toContain('[as of event snapshot]');
+    expect(standings).not.toBe(perEvent); // genuinely distinguishable now
   });
 });
 

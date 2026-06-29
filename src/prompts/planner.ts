@@ -87,16 +87,22 @@ const trimDesc = (d: string): string => (d.length <= DESC_CAP ? d : `${d.slice(0
 const SAMPLE_CAP = 15;
 
 /**
- * One property menu line, enriched with the column's surfaced semantics (ADR-010): prefLabel +
- * description + (enumerable only) sample values. Bridge-table (non-terminal) columns render TERSE
- * (label only) — they are join context, not selection targets, and their samples were already
+ * One property menu line, enriched with the column's surfaced semantics (ADR-010 / ADR-013): prefLabel +
+ * grain tag + description + (enumerable only) sample values. Bridge-table (non-terminal) columns render
+ * TERSE (label only) — they are join context, not selection targets, and their samples were already
  * trimmed by Stage 2. The base `- <table>.<col> — IRI: <iri>` head is unchanged, so the offered IRI
  * set (menu == leash) is identical; only human-readable annotations are appended.
+ *
+ * The `[cumulative snapshot]` grain tag (ADR-013) surfaces `qsl:temporality` — the distinguisher the
+ * model needs to tell a running-total column (aggregate with MAX, not SUM) from a per-row column. It is
+ * rendered generically (hyphens → spaces) from whatever value the ontology carries, so it disambiguates
+ * same-surface-name columns for ANY DB, with no hardcoded strings.
  */
 function renderPropLine(iri: string, cp: ColumnProp | undefined, isBridge: boolean): string {
   let line = `- ${propLabel(iri)} — IRI: ${iri}`;
   if (cp?.prefLabel) line += ` — "${cp.prefLabel}"`;
   if (isBridge) return line; // bridge columns: label only (context, not a selection target)
+  if (cp?.temporality) line += ` [${cp.temporality.replace(/-/g, ' ')}]`;
   if (cp?.description) line += ` — ${trimDesc(cp.description)}`;
   if (cp && isEnumerable(cp)) {
     const shown = cp.sampleValues.slice(0, SAMPLE_CAP).join(', ');
