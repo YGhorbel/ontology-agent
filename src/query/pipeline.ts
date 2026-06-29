@@ -31,9 +31,13 @@ import { extractSubgraph } from './subgraph.js';
 import { groundSuperlatives } from './superlative.js';
 import { pruneTerminals } from './prune.js';
 import type { PruneTrace } from './prune.js';
+import { rescueFkSymmetricSiblings } from './sibling-survival.js';
+import type { SiblingSurvivalTrace } from './sibling-survival.js';
 import type { OntologyGraph, SubgraphPayload, CapabilityRef, ExtractOpts } from './graph-model.js';
 import { planQuery } from './planner.js';
 import type { PlannerTrace } from './planner.js';
+import { resolveGrain } from './grain-resolve.js';
+import type { GrainResolveTrace } from './grain-resolve.js';
 import type { MetricQueryIR } from './ir.js';
 import { compile, CompileError } from './compiler.js';
 import type { CompileTraceEntry } from './compiler.js';
@@ -51,10 +55,14 @@ export interface PipelineFailure {
 export interface PipelineTraces {
   anchor?: AnchorTrace;
   prune?: PruneTrace;
+  /** Stage-1.6 FK-symmetric grain-competitor sibling survival (absent when the trigger never fires). */
+  siblingSurvival?: SiblingSurvivalTrace;
   subgraph?: { joins: SubgraphPayload['joins']; totalCost: number; disconnected?: boolean };
   /** Stage-1.x superlative groundings (empty/absent when no superlative fired). */
   superlative?: SuperlativeDirective[];
   planner?: PlannerTrace;
+  /** Stage-3a.5 tier-1 grain resolver (ADR-016). `grainResolve.ambiguities` non-empty ⇒ grain-ambiguous. */
+  grainResolve?: GrainResolveTrace;
   compiler?: CompileTraceEntry[];
 }
 
@@ -151,6 +159,7 @@ type Update = Partial<PipelineStateT>;
 const ANCHOR = 'anchor';
 const SUBGRAPH = 'subgraph';
 const PLANNER = 'planner';
+const RESOLVE = 'resolve';
 const COMPILE = 'compile';
 const EXECUTE = 'execute';
 
@@ -178,21 +187,32 @@ function subgraphNode(deps: PipelineDeps) {
     // on the FULL set: pruned-away classes never enter the tree, so their columns are inert.
     const { terminals: prunedTerminals, trace: pruneTrace } = pruneTerminals(set);
     const anchoredColumns = deriveAnchoredColumns(set);
+    // Stage-1.6 sibling survival: re-admit FK-symmetric grain-competitor siblings the prune dropped by
+    // grain-blind specificity (ADR-014), so both reach the payload and Move 1's grain tag can choose.
+    // Widens the must-include set only; back-prune (ADR-012) drops whichever sibling the plan omits.
+    const sibling = rescueFkSymmetricSiblings({
+      candidates: set.terminals,
+      kept: prunedTerminals,
+      anchoredColumns,
+      graph: deps.graph,
+    });
+    const terminals = sibling.terminals;
     // Stage-1.x superlative grounding: a superlative over a single-orderable class adds that one
     // ranking column to the anchored set so the trimmer keeps it (the planner can then bind it).
     // Merge-only — the AnchorSet is untouched, so prune/Steiner/menu behaviour is unchanged.
-    const superlatives = groundSuperlatives(state.question, prunedTerminals, deps.graph);
+    const superlatives = groundSuperlatives(state.question, terminals, deps.graph);
     for (const d of superlatives) {
       const cols = anchoredColumns.get(d.classIri) ?? [];
       if (!cols.includes(d.column)) cols.push(d.column);
       anchoredColumns.set(d.classIri, cols);
     }
-    const payload = extractSubgraph(deps.graph, prunedTerminals, [], deps.capabilities, {
+    const payload = extractSubgraph(deps.graph, terminals, [], deps.capabilities, {
       ...deps.extractOpts,
       anchoredColumns,
     });
     const traces: PipelineTraces = {
       prune: pruneTrace,
+      ...(sibling.trace.groups.length > 0 ? { siblingSurvival: sibling.trace } : {}),
       subgraph: { joins: payload.joins, totalCost: payload.totalCost, disconnected: payload.disconnected },
       ...(superlatives.length > 0 ? { superlative: superlatives } : {}),
     };
@@ -213,6 +233,17 @@ function plannerNode(deps: PipelineDeps) {
       return { failure: { stage: 'planner', reason: res.reason }, traces: { planner: res.trace } };
     }
     return { ir: res.ir, traces: { planner: res.trace } };
+  };
+}
+
+function resolveNode(deps: PipelineDeps) {
+  return async function resolve(state: PipelineStateT): Promise<Update> {
+    // Tier-1 grain resolver (ADR-016): rebind the grain column to the operation-implied sibling where the
+    // operation determines grain; surface (flag, never rewrite) the irreducible ASOF collision. Pure,
+    // lexicon-free (no question string in scope), no LLM — back-prune then drops the unreferenced sibling.
+    // The graph supplies FK-symmetry so a rebind stays within true grain siblings (never swaps entity).
+    const { ir, trace } = resolveGrain(state.ir!, state.payload!, deps.graph);
+    return { ir, traces: { grainResolve: trace } };
   };
 }
 
@@ -251,12 +282,15 @@ export function buildPipeline(deps: PipelineDeps) {
     .addNode(ANCHOR, anchorNode(deps))
     .addNode(SUBGRAPH, subgraphNode(deps))
     .addNode(PLANNER, plannerNode(deps))
+    .addNode(RESOLVE, resolveNode(deps))
     .addNode(COMPILE, compileNode())
     .addNode(EXECUTE, executeNode(deps))
     .addEdge(START, ANCHOR)
     .addEdge(ANCHOR, SUBGRAPH)
     .addConditionalEdges(SUBGRAPH, routeOnFailure(PLANNER), [PLANNER, END])
-    .addConditionalEdges(PLANNER, routeOnFailure(COMPILE), [COMPILE, END])
+    // RESOLVE is pure and no-throw, so the planner routes straight into it and it always continues to COMPILE.
+    .addConditionalEdges(PLANNER, routeOnFailure(RESOLVE), [RESOLVE, END])
+    .addEdge(RESOLVE, COMPILE)
     .addConditionalEdges(COMPILE, routeOnFailure(EXECUTE), [EXECUTE, END])
     .addEdge(EXECUTE, END)
     .compile();
