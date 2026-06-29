@@ -94,8 +94,9 @@ export function payloadIris(payload: SubgraphPayload): { properties: Set<string>
   return { properties, capabilities };
 }
 
-/** A property-IRI → ColumnProp map for the payload (mirrors `payloadIris`' class/column walk). */
-function payloadColumnByIri(payload: SubgraphPayload): Map<string, ColumnProp> {
+/** A property-IRI → ColumnProp map for the payload (mirrors `payloadIris`' class/column walk).
+ * Exported so the planner menu can annotate each offered IRI with its column's semantics (ADR-010). */
+export function payloadColumnByIri(payload: SubgraphPayload): Map<string, ColumnProp> {
   const m = new Map<string, ColumnProp>();
   for (const c of payload.classes) {
     const table = tableOfClassIri(c.iri);
@@ -122,7 +123,7 @@ const OPTION_POOL_CAP = 15;
  * rejected. (The generator only emits samples when distinctCount ≤ the enum cap, so presence of a
  * full list ⇒ the whole domain — see ADR-009 and src/agent/nodes/05-validate.ts.)
  */
-function isEnumerable(cp: ColumnProp): cp is ColumnProp & { sampleValues: string[]; distinctCount: number } {
+export function isEnumerable(cp: ColumnProp): cp is ColumnProp & { sampleValues: string[]; distinctCount: number } {
   return (
     cp.sampleValues !== undefined &&
     cp.sampleValues.length > 0 &&

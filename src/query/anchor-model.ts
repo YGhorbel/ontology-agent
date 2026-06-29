@@ -46,6 +46,28 @@ export interface ValueAnchor {
   matchType: 'exact' | 'fuzzy';
 }
 
+/**
+ * A superlative grounded to its orderable dimension column (Stage-1.x). Produced by
+ * `groundSuperlatives` (src/query/superlative.ts) when a candidate class has EXACTLY ONE orderable
+ * column of the superlative's dimension type; merged into the `anchoredColumns` map so pruning + the
+ * S2 trimmer keep the column. The `dir` records the implied ranking order (min=ASC, max=DESC).
+ * See docs/adr/011-superlative-grounding.md.
+ */
+export interface SuperlativeDirective {
+  /** Class IRI whose column the superlative grounds. */
+  classIri: string;
+  /** The grounded column name. */
+  column: string;
+  /** Datatype-property IRI of the grounded column (`qsl:property/<table>/<column>`). */
+  propertyIri: string;
+  /** Implied ranking direction (min=ASC for oldest/earliest, max=DESC for youngest/newest/latest). */
+  dir: 'ASC' | 'DESC';
+  /** The superlative token that fired (e.g. "oldest"). */
+  token: string;
+  /** The grounding provenance — always 'superlative'. */
+  provenance: 'superlative';
+}
+
 /** Enough to debug the union: keywords, per-matcher candidates pre-union, the union, terminals. */
 export interface AnchorTrace {
   /** Distinct question spans considered (uni/bi/tri-grams). */

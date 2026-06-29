@@ -29,6 +29,9 @@ import { buildGraph, loadCapabilities } from '../../src/query/graph-build.js';
 import { extractSubgraph } from '../../src/query/subgraph.js';
 import { compile } from '../../src/query/compiler.js';
 import { runPipeline, deriveAnchoredColumns, type PipelineDeps } from '../../src/query/pipeline.js';
+import { anchorQuestion } from '../../src/query/anchor.js';
+import { pruneTerminals } from '../../src/query/prune.js';
+import { groundSuperlatives } from '../../src/query/superlative.js';
 import type { OntologyGraph } from '../../src/query/graph-model.js';
 import type { AnchorSet } from '../../src/query/anchor-model.js';
 import type { MetricQueryIR } from '../../src/query/ir.js';
@@ -226,6 +229,41 @@ describe('Stage-4 pipeline — F. traces assemble the provenance spine', () => {
     expect(res.traces.subgraph).toBeDefined();
     expect(res.traces.planner).toBeDefined();
     expect(res.traces.compiler).toBeDefined();
+  });
+});
+
+// ── H. Superlative grounding: ranking column survives end-to-end; no over-join/happy-path regression ─
+describe('Stage-4 pipeline — H. superlative grounding keeps the ranking column (drivers.dob)', () => {
+  it('end-to-end: the payload for "who is the oldest driver" now CONTAINS drivers.dob (ASC hinted in trace)', async () => {
+    // COUNT over the grounded column: it binds only because dob survived the trim (it did not before).
+    const oldestIr: MetricQueryIR = {
+      measures: [{ aggExpr: { fn: 'COUNT', property: datatypePropertyIri('drivers', 'dob') }, alias: 'n' }],
+    };
+    const res = await runPipeline('who is the oldest driver', realDeps({ llm: fakeIr(oldestIr) }));
+
+    const drivers = res.payload?.classes.find((c) => c.iri === ci('drivers'));
+    expect(drivers?.properties.some((p) => p.col === 'dob')).toBe(true);
+    // The grounding is recorded on the trace with the implied direction.
+    expect(res.traces.superlative?.some((s) => s.column === 'dob' && s.dir === 'ASC' && s.provenance === 'superlative')).toBe(true);
+  });
+
+  it('non-regression (THE contract): over-join + happy-path payloads are byte-identical with grounding active', () => {
+    const OVERJOIN = 'reference names of all the drivers who were eliminated in the first period in race number 20';
+    for (const q of [OVERJOIN, 'average lap time for British constructors']) {
+      const set = anchorQuestion(q, index);
+      const { terminals } = pruneTerminals(set);
+      const baseAnchored = deriveAnchoredColumns(set);
+      const baseline = extractSubgraph(graph, terminals, [], capabilities, { anchoredColumns: baseAnchored });
+
+      // No superlative token → grounding is empty → the merge is a no-op → payload byte-identical.
+      const sup = groundSuperlatives(q, terminals, graph);
+      expect(sup).toEqual([]);
+      const merged = new Map([...baseAnchored].map(([k, v]) => [k, [...v]]));
+      for (const d of sup) merged.set(d.classIri, [...(merged.get(d.classIri) ?? []), d.column]);
+      const withGrounding = extractSubgraph(graph, terminals, [], capabilities, { anchoredColumns: merged });
+
+      expect(withGrounding).toEqual(baseline);
+    }
   });
 });
 

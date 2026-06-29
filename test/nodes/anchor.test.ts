@@ -14,6 +14,9 @@ import { buildAnchorIndex } from '../../src/query/anchor-index.js';
 import { anchorQuestion } from '../../src/query/anchor.js';
 import { buildGraph, loadCapabilities } from '../../src/query/graph-build.js';
 import { extractSubgraph } from '../../src/query/subgraph.js';
+import { pruneTerminals } from '../../src/query/prune.js';
+import { groundSuperlatives } from '../../src/query/superlative.js';
+import type { OntologyGraph } from '../../src/query/graph-model.js';
 
 const FIXTURE = resolve(process.cwd(), 'eval/fixtures/ontologies/formula1-1781704520.jsonld');
 const raw = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Record<string, unknown>;
@@ -101,5 +104,87 @@ describe('Stage 1 — anchoring (concept ∪ value, recall-favoring, static-inde
     expect(a.terminals).toHaveLength(0);
     expect(a.conceptAnchors).toHaveLength(0);
     expect(a.valueAnchors).toHaveLength(0);
+  });
+});
+
+/**
+ * Stage-1.x — superlative grounding (date-only, single-candidate self-scoping rule).
+ * A superlative binds to the SOLE orderable column of its dimension type on a candidate class, so
+ * pruning + the S2 trimmer keep it; ambiguous (0 or >1 candidate) → fall through. No LLM/DB.
+ */
+describe('Stage 1.x — superlative grounding (single-candidate, date-only)', () => {
+  const fxGraph = buildGraph(raw);
+  const caps = loadCapabilities(raw);
+  const DRIVERS = iri('drivers');
+  const candidates = (q: string): string[] => pruneTerminals(anchorQuestion(q, index)).terminals;
+  // Synthetic graph helper for the ambiguous / id-exclusion cases (the F1 fixture has no class
+  // with two date columns — a real date superlative over `races` correctly grounds its sole date).
+  const synth = (table: string, properties: { col: string; dataType?: string; isPrimaryKey?: boolean }[]): OntologyGraph => ({
+    nodes: new Map([[iri(table), { iri: iri(table), table, properties }]]),
+    adjacency: new Map([[iri(table), []]]),
+  });
+
+  it('1. single date superlative grounds drivers.dob (ASC), and it survives the trim', () => {
+    const oldest = groundSuperlatives('who is the oldest driver', candidates('who is the oldest driver'), fxGraph);
+    const d = oldest.find((x) => x.classIri === DRIVERS);
+    expect(d).toBeDefined();
+    expect(d?.column).toBe('dob');
+    expect(d?.dir).toBe('ASC'); // min date = oldest
+    expect(d?.provenance).toBe('superlative');
+
+    // "youngest" grounds the same column, opposite direction.
+    const young = groundSuperlatives('the youngest driver', candidates('the youngest driver'), fxGraph);
+    expect(young.find((x) => x.classIri === DRIVERS)?.dir).toBe('DESC');
+
+    // Survival: before this brick dob (no enum samples) was trimmed; grounded-as-anchored, it survives.
+    const terminals = candidates('who is the oldest driver');
+    const baseline = extractSubgraph(fxGraph, terminals, [], caps, {});
+    const baseDrivers = baseline.classes.find((c) => c.iri === DRIVERS);
+    expect(baseDrivers?.properties.some((p) => p.col === 'dob')).toBe(false); // dropped without grounding
+
+    const anchoredColumns = new Map<string, string[]>([[DRIVERS, ['dob']]]);
+    const grounded = extractSubgraph(fxGraph, terminals, [], caps, { anchoredColumns });
+    const gDrivers = grounded.classes.find((c) => c.iri === DRIVERS);
+    expect(gDrivers?.properties.some((p) => p.col === 'dob')).toBe(true); // survives once anchored
+  });
+
+  it('2. id/type exclusion: grounds dob, never driverid (the original wrong-column bug)', () => {
+    const g = groundSuperlatives('who is the oldest driver', candidates('who is the oldest driver'), fxGraph);
+    const driversCols = g.filter((x) => x.classIri === DRIVERS).map((x) => x.column);
+    expect(driversCols).toEqual(['dob']); // dob is the SOLE date orderable in drivers
+    expect(driversCols).not.toContain('driverid'); // bigint + PK + ends-in-'id' → excluded
+  });
+
+  it('3. multi-candidate falls through (AmbiSQL guard); id-exclusion brings the count back to one', () => {
+    // Two plain date columns compete → ambiguous → NO grounding (never guess).
+    const twoDate = synth('events', [
+      { col: 'created_at', dataType: 'date' },
+      { col: 'updated_at', dataType: 'date' },
+      { col: 'name', dataType: 'text' },
+    ]);
+    expect(groundSuperlatives('the oldest event', [iri('events')], twoDate)).toEqual([]);
+
+    // One plain date + one date-typed PK/id column → the id is excluded, count → 1 → grounds the plain one.
+    const idPlusDate = synth('events', [
+      { col: 'event_id', dataType: 'date', isPrimaryKey: true },
+      { col: 'recorded_at', dataType: 'date' },
+    ]);
+    const g = groundSuperlatives('the latest event', [iri('events')], idPlusDate);
+    expect(g).toHaveLength(1);
+    expect(g[0]?.column).toBe('recorded_at');
+    expect(g[0]?.dir).toBe('DESC');
+  });
+
+  it('4. zero-candidate falls through: a date superlative over a class with no date column', () => {
+    // constructors has no date column (id/text/numeric only) → no grounding, no crash.
+    expect(groundSuperlatives('the oldest constructor', [iri('constructors')], fxGraph)).toEqual([]);
+    // Likewise a synthetic class with no date column.
+    const noDate = synth('widgets', [{ col: 'widget_id', dataType: 'bigint', isPrimaryKey: true }, { col: 'label', dataType: 'text' }]);
+    expect(groundSuperlatives('the newest widget', [iri('widgets')], noDate)).toEqual([]);
+  });
+
+  it('5. non-regression: a question with no superlative token grounds nothing', () => {
+    expect(groundSuperlatives('average lap time for British constructors', candidates('average lap time for British constructors'), fxGraph)).toEqual([]);
+    expect(groundSuperlatives('reference names of all the drivers who were eliminated in the first period in race number 20', candidates('drivers eliminated in qualifying for race 20'), fxGraph)).toEqual([]);
   });
 });

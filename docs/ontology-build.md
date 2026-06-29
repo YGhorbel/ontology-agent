@@ -263,6 +263,8 @@ where a catalog-only approach would leave holes.
 | `ONTOLOGY_VALIDATE_DRY_RUN` | `true` | Whether node ⑤ executes a read-only `SELECT <formula>` dry-run per metric (`false` = parse/bind/type only) |
 | `ONTOLOGY_VALIDATE_STMT_TIMEOUT_MS` | `5000` | `statement_timeout` for the formula dry-run and the monotonicity probe |
 | `ONTOLOGY_MONOTONIC_MIN_RATIO` | `0.99` | Min fraction of non-negative deltas for a measure to be tagged `cumulative-snapshot` |
+| `ONTOLOGY_SNAPSHOT_MAX_VN_RATIO` | `0.1` | Max von Neumann ratio `var(Δ)/var(v)` for a measure to be tagged `as-of-event-snapshot` (carry-forward gate, ADR-015) |
+| `ONTOLOGY_SNAPSHOT_MIN_MOVE_FRAC` | `0.15` | Min fraction of non-zero consecutive steps — excludes near-constant attributes from the snapshot tag (ADR-015) |
 | `ONTOLOGY_EXPORT_MIN_CONF` | `0.5` | Min confidence for a *discovered* edge to publish in the asserted graph; below it the edge is a `qsl:CandidateRelationship` (`declared`/`inferred-name` always asserted) |
 | `ONTOLOGY_BUILD_NUMBER` | *(epoch s)* | Monotonic build number stamped into the header's `owl:versionInfo`; defaults to the run's epoch seconds |
 | `ONTOLOGY_CARDINALITY_MIN_CONF` | `0.5` | Min edge confidence for `qsl:cardinality` to be emitted — below it the (untrustworthy) cardinality is omitted |
@@ -343,6 +345,57 @@ whether the measure is monotonic non-decreasing along the sequence, within each
 - The node ② concept prompt is told which columns are cumulative, so the generated comment
   describes a *running total to date* rather than a *per-event award*; node ⑤ additionally **warns**
   (does not fail) when a tagged column's comment still uses per-event phrasing.
+
+### As-of-event snapshot tagging (ADR-015)
+
+Monotonicity is only one species of *as-of-event snapshot*. A championship `position`/rank is also a
+state carried-forward as-of the event, but it is **not monotonic** (a competitor drops 2nd→4th), so
+the Fix-3 probe misses it: `driverstandings.position` and `constructorstandings.position` ended up
+**untagged**, byte-identical to per-event `results.position`, leaving the planner menu
+([ADR-013](adr/013-menu-grain-distinguishers.md)) grain-**blind** for the position family. A second
+probe ([`snapshot.ts`](../src/profiling/snapshot.ts), in ①b, after the monotonicity probe) generalizes
+the tag with two **data-grounded** gates (both required) — no column-name special-casing:
+
+- **functional determination (structural grain coherence).** The table's grain must be exactly
+  `(entity, event)` — one row per `(entity, event)`, checked as
+  `count(*) == count(distinct (entity…, eventKey))`. This gates out multi-row-per-event telemetry
+  (`laptimes`, `pitstops`) and non-unique grains (`results`: historic shared drives make `(driver, race)`
+  non-unique). The standings tables pass.
+- **carry-forward (data).** Within each `(entity, season)` partition along the event order, the von
+  Neumann ratio `var(Δ) / var(v)` must be low — a carried-forward trajectory is ≈0, an i.i.d. per-event
+  draw ≈2; below `ONTOLOGY_SNAPSHOT_MAX_VN_RATIO` ⇒ carried-forward. A minimum non-zero-step fraction
+  (`ONTOLOGY_SNAPSHOT_MIN_MOVE_FRAC`) additionally excludes a near-constant attribute (a car number).
+  Live F1 separation is clean: standings `position` ≈ 0.046–0.049 vs `results.position` 0.800,
+  `qualifying.position` 0.514. This pair also fires on tables with no cumulative column at all (e.g.
+  `accounts.balance` as-of-date in finance), which generalizes the probe beyond F1.
+
+> The two signals first sketched from the diagnostic — cumulative-sibling *table-coherence* and a
+> *range-normalized step* — were **falsified by the live DB** and replaced: table-coherence inherited a
+> constant-column monotonicity false-positive (`qualifying.number`) that would drag `qualifying.position`
+> in, and the range step over-fired on every per-event column. See [ADR-015](adr/015-as-of-event-snapshot-tag.md).
+
+The snapshot tag value is **`as-of-event-snapshot`**, distinct from `cumulative-snapshot` on purpose:
+every consumer that does *special behavior* — the compiler's de-cumulation (H2), node ⑤'s SUM
+backstop, the node ② cumulative description hint, the node ④ never-SUM list — keys on the exact string
+`cumulative-snapshot`, so the new value flows **only** to the generic menu renderer
+(`temporality.replace(/-/g, ' ')` → `[as of event snapshot]`). A rank is a *state*, not a running sum:
+it must NOT be de-cumulated or SUM-failed. **Symmetric discrimination is the point** — a per-event
+sibling (`results.position`: no cumulative sibling, volatile) is tagged by neither signal and stays
+untagged, so the two siblings are distinguishable in the menu. `qsl:temporalityEvidence` gains an
+optional `signal` (`monotonic | carry-forward`) and, for carry-forward, a `vnRatio`.
+
+> Closes the tier-2 **tag-gap** only. It does **not** resolve the tier-3 869/950 intent collision
+> (structurally identical SQL, opposite grain — no generated metadata fixes that), and it **unlocks but
+> does not build** the tier-1 operation⇒grain resolver. See [grain-separability](diagnosis/grain-separability.md).
+
+#### Regenerate-and-diff (blast-radius control)
+
+Regeneration re-runs the two LLM nodes, whose free-text and capability `@id`s resample. To keep the
+refreshed fixture interpretable, `generate --freeze-text-from <oldArtifact>`
+([`artifact-merge.ts`](../src/serialize/artifact-merge.ts)) carries the LLM free-text + capability set
+over from the prior artifact by `@id`, so the only delta is the deterministic structure + new tags.
+`scripts/temporality-diff.ts` then reports **intended** temporality changes vs **any other** change
+(target 0) and exits non-zero on drift — the new artifact replaces the fixture only after a clean diff.
 
 ### Bounded composite join paths (Fix 7)
 

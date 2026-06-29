@@ -17,6 +17,7 @@ import { buildGraph, loadCapabilities } from '../../src/query/graph-build.js';
 import { extractSubgraph } from '../../src/query/subgraph.js';
 import { anchorQuestion } from '../../src/query/anchor.js';
 import { pruneTerminals } from '../../src/query/prune.js';
+import { groundSuperlatives } from '../../src/query/superlative.js';
 import { classIri } from '../../src/types/ontology.js';
 import type { AnchorSet } from '../../src/query/anchor-model.js';
 
@@ -137,5 +138,18 @@ describe('prune — 5. PruneTrace records why each terminal was kept or dropped'
     const droppedIris = trace.dropped.map((d) => d.iri);
     expect(droppedIris).toContain(ci('constructors'));
     for (const d of trace.dropped) expect(d.reason).toMatch(/generic|no exact-class/);
+  });
+});
+
+// ── 6. Superlative grounding is orthogonal to prune (it touches trim, not the terminal set) ──
+describe('prune — 6. superlative grounding does not change the pruned terminal set', () => {
+  it('a date superlative leaves the pruned terminals identical (grounding adds a column, not a terminal)', () => {
+    const set = anchorQuestion('who is the oldest driver', index);
+    const before = pruneTerminals(set).terminals;
+    // Grounding runs over the pruned terminals; it must not mutate the AnchorSet or the prune outcome.
+    groundSuperlatives('who is the oldest driver', before, graph);
+    const after = pruneTerminals(set).terminals;
+    expect(after).toEqual(before);
+    expect(after).toContain(ci('drivers'));
   });
 });

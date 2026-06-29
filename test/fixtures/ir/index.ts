@@ -22,6 +22,9 @@ export const prop = datatypePropertyIri; // (table, column) -> qsl:property/<tab
 
 const caps = loadCapabilities(raw);
 
+/** The real formula1 graph (declared + profiled edges) — for nodes that need FK-symmetry (the grain resolver). */
+export const f1Graph = buildGraph(raw, {});
+
 export interface PayloadOpts {
   uniform?: boolean;
   /** columns to retain per table (mirrors Stage-1 anchoring) */
@@ -47,8 +50,12 @@ export const ir1: MetricQueryIR = {
 };
 
 // 2. Composite-join rendering (uniform mode picks the laptimes↔driverstandings 2-key edge).
+// The filter names a `driverstandings` COLUMN, so the IR genuinely references that table — the
+// back-prune (ADR-012) keeps the composite edge. (A filter on a join-key column still counts its
+// table as referenced; that's the brick/grain boundary, not a back-prune win.)
 export const ir2: MetricQueryIR = {
   measures: [{ aggExpr: { fn: 'COUNT', property: prop('laptimes', 'milliseconds') }, alias: 'n' }],
+  filters: [{ property: prop('driverstandings', 'raceid'), op: '=', value: 18 }],
 };
 
 // 4a. Cumulative-snapshot rewrite (H2): SUM over a running total → de-cumulate per (driver, season).
@@ -106,4 +113,33 @@ export const irRankingNumericText: MetricQueryIR = {
 export const irMixedInvalid: MetricQueryIR = {
   select: [{ property: prop('circuits', 'lat') }],
   measures: [{ aggExpr: { fn: 'COUNT', property: prop('circuits', 'circuitid') }, alias: 'n' }],
+};
+
+// ── Back-prune (ADR-012): payloads that over-join tables the IR never references. ──
+
+// B1. References only `drivers` → the laptimes over-join must be pruned (the 915 collapse to single-table).
+export const irBackpruneSingle: MetricQueryIR = {
+  select: [{ property: prop('drivers', 'nationality') }],
+  orderBy: [{ byProperty: prop('drivers', 'dob'), dir: 'ASC' }],
+  limit: 1,
+};
+
+// B3. Filters on a fact table (qualifying) → that REFERENCED table must STAY (over-prune guard).
+export const irBackpruneRefFact: MetricQueryIR = {
+  select: [{ property: prop('drivers', 'surname') }],
+  filters: [{ property: prop('qualifying', 'position'), op: '>=', value: 16 }],
+};
+
+// B4. References 3 tables of a 6-table path payload → minimal subtree spans them (drops off-path circuits leaf).
+export const irBackpruneMultiRef: MetricQueryIR = {
+  select: [
+    { property: prop('races', 'year') },
+    { property: prop('drivers', 'surname') },
+    { property: prop('constructors', 'name') },
+  ],
+};
+
+// B6. References only `constructors`; the results leaf contributes only a join key → dropped.
+export const irBackpruneJoinKeyOnly: MetricQueryIR = {
+  select: [{ property: prop('constructors', 'name') }],
 };

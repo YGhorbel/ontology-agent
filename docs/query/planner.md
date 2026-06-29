@@ -37,6 +37,79 @@ So generation is steered by the **prompt's IRI menu** (built from `payloadIris(p
 equals the leash by construction), and the narrowed schema remains the authority — at the validate
 step, which is exactly where the repair loop reads it.
 
+## The menu carries column *meaning*, not just IRIs ([ADR-010](../adr/010-planner-menu-semantics.md))
+
+`renderPayloadMenu` ([src/prompts/planner.ts](../../src/prompts/planner.ts)) renders each property line
+with the column's **surfaced semantics** — not just `table.column — IRI`:
+
+```
+- drivers.dob — IRI: qsl:property/drivers/dob — "Date of birth" — Driver's date of birth (…), 821 distinct dates with range [1896-12-28..1998-10-29].
+- drivers.nationality — IRI: … — "Nationality" — Driver nationality (…), a 41-value enumeration … — values: American, …, British, … (+26 more)
+```
+
+Per property the line appends, when present: the **prefLabel** (`skos:prefLabel`), a **description**
+(`rdfs:comment`, char-capped — see below), and — only for an **enumerable** column (reusing the exact
+`isEnumerable` predicate from value-grounding) — its **sample values**. The generator already wrote all
+of this; `ColumnProp` now carries `prefLabel` / `altLabel` / `description` (read in `columnPropOf`,
+[src/query/graph-build.ts](../../src/query/graph-build.ts)) so the consumer can show it.
+
+**Why.** The planner binds superlatives/filters using a column's **meaning**, not just which IRIs are
+legal. "Oldest driver" is a ranking over `drivers.dob` (a date of birth) — but if the menu shows only
+`drivers.dob — IRI: …` and `drivers.driverid — IRI: …`, both are equally legal sortable columns and the
+planner grabbed the PK. Surfacing prefLabel "Date of birth" + the date range `[1896-12-28..1998-10-29]`
+(vs `driverid`'s "Driver ID" + `[1..841]`) is what lets it pick `dob ASC`. This is **Shape A** —
+general-language superlatives that map to a ranking over a semantically-identified column. Domain-specific
+**Shape B** cutoffs ("eliminated in Q1 = bottom 5 by q1") need knowledge beyond a column description and
+stay out of scope.
+
+**Bounds (token budget).** Descriptions are capped at `QUERY_MENU_DESC_CAP` chars (default **160**;
+env-overridable). The cap is a **char-cap, not a first-sentence trim**, so a trailing directional clause
+or range survives truncation — on this fixture every comment is < 160 chars, so nothing truncates.
+Sample lists cap at 15 with a `(+N more)`. **Bridge** (non-terminal) columns render **terse** (prefLabel
+only): they are join context, not selection targets, and Stage 2 already stripped their samples.
+`altLabel` is carried but **not** rendered (prefLabel + description already disambiguate).
+
+**menu == leash is preserved.** The property lines still iterate `payloadIris(payload)` — the same IRI
+set, same order. The annotations are appended to each line; **no IRI is added or removed**, so
+`specializeIrSchema` accepts/rejects exactly as before (covered by test `M4`).
+
+## The menu surfaces column *grain* ([ADR-013](../adr/013-menu-grain-distinguishers.md))
+
+Each property line also appends a **grain tag** when the column carries `qsl:temporality` — e.g.
+`[cumulative snapshot]` for a running-total column:
+
+```
+- constructorstandings.points — IRI: … — "Constructor points" [cumulative snapshot] — Running total (cumulative) … not points awarded solely at that race …
+- constructorresults.points  — IRI: … — "Points"             — Points awarded … (per-row value, not a running total) …
+```
+
+**Why.** The grain/wrong-fact-table bucket was the planner being **blind to grain**, not choosing badly:
+two same-surface-name columns (`constructorstandings.points` = cumulative running total vs
+`constructorresults.points` = per-race) were indistinguishable in the menu. The generator *writes* the
+distinguishers (`qsl:temporality` + the `rdfs:comment` clauses "running total" / "per-row value, not a
+running total"), but the **renderer dropped the temporality** before the planner saw it. The tag
+un-trims that signal: it is rendered generically (`temporality.replace(/-/g, ' ')`) from whatever value
+the ontology carries, so it disambiguates for **any** DB — no hardcoded strings. The model already
+carried `ColumnProp.temporality` (read in `columnPropOf`, [graph-build.ts](../../src/query/graph-build.ts),
+and surviving the Stage-2 trimmer); the only gap was the menu line, so this is a **renderer-only** change.
+
+Like the description, the tag renders only for **terminal** (selection-target) columns — bridge columns
+stay terse — and adds no IRI, so menu == leash is preserved (tests `D1`–`D5`).
+
+**Scope / honesty.** This brick is measured against the **blind-to-grain** hypothesis: surfacing the
+distinguisher is expected to help **2a** (cumulative-vs-per-event: 950/892/902/906/994) and **2c**
+(projection: 854/868/910). It is **not** expected to flip **2b** (concept-owns-table:
+928/933/937/989/990 — "rank"/"finished"/"champion"), which needs predicate/status-join work. The
+per-edge **join fan-out** carry (surfacing `qsl:cardinality` on `SubgraphPayload.joins`) is a separate,
+deferred brick: the planner-facing join path never carried cardinality (the `multiplies` flag lives in a
+different module, `src/query/join-graph.ts`, used by grounding/intent — not Stage-2→planner), and the
+formula1 fixture is all many-to-one, so that annotation could not fire on the demo. The deliverable here
+is **the grain signal is now in the menu**; a planner that still mis-picks despite a visible tag is the
+empirical result that would justify a heavier deterministic selector next.
+
+This is the schema-property-enrichment pattern from **UniSAr** (type/cardinality/description disambiguate
+same-name columns), here driven by *profiled* evidence (`qsl:temporalityEvidence`).
+
 ## Value-grounding: filter literals must be real values ([ADR-009](../adr/009-value-grounding.md))
 
 The leash also constrains filter **values**, not just IRIs. The IRI leash stops the planner inventing

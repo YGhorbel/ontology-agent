@@ -15,8 +15,8 @@
  * as read-only context with an explicit instruction NOT to emit joins (the IR grammar has no
  * join field; join authority belongs to Stage 2).
  */
-import type { SubgraphPayload } from '../query/graph-model.js';
-import { payloadIris } from '../query/ir.js';
+import type { ColumnProp, SubgraphPayload } from '../query/graph-model.js';
+import { payloadIris, payloadColumnByIri, isEnumerable } from '../query/ir.js';
 import { tableOfClassIri } from '../query/graph-build.js';
 
 export const PLANNER_PROMPT_VERSION = 'planner/v2';
@@ -73,9 +73,50 @@ function propLabel(iri: string): string {
   return `${table}.${column}`;
 }
 
+/**
+ * Char cap for a rendered column description (ADR-010). Char-cap (not first-sentence) so trailing
+ * directional hints / ranges survive truncation; env-overridable because another DB's comments may be
+ * longer than this fixture's. Generous enough that every formula1 comment renders intact.
+ */
+const DESC_CAP = (() => {
+  const v = Number(process.env.QUERY_MENU_DESC_CAP);
+  return Number.isFinite(v) && v > 0 ? v : 160;
+})();
+const trimDesc = (d: string): string => (d.length <= DESC_CAP ? d : `${d.slice(0, DESC_CAP).trimEnd()}…`);
+/** Enumerable sample values surfaced per property line (cap mirrors the option-pool cap). */
+const SAMPLE_CAP = 15;
+
+/**
+ * One property menu line, enriched with the column's surfaced semantics (ADR-010 / ADR-013): prefLabel +
+ * grain tag + description + (enumerable only) sample values. Bridge-table (non-terminal) columns render
+ * TERSE (label only) — they are join context, not selection targets, and their samples were already
+ * trimmed by Stage 2. The base `- <table>.<col> — IRI: <iri>` head is unchanged, so the offered IRI
+ * set (menu == leash) is identical; only human-readable annotations are appended.
+ *
+ * The `[cumulative snapshot]` grain tag (ADR-013) surfaces `qsl:temporality` — the distinguisher the
+ * model needs to tell a running-total column (aggregate with MAX, not SUM) from a per-row column. It is
+ * rendered generically (hyphens → spaces) from whatever value the ontology carries, so it disambiguates
+ * same-surface-name columns for ANY DB, with no hardcoded strings.
+ */
+function renderPropLine(iri: string, cp: ColumnProp | undefined, isBridge: boolean): string {
+  let line = `- ${propLabel(iri)} — IRI: ${iri}`;
+  if (cp?.prefLabel) line += ` — "${cp.prefLabel}"`;
+  if (isBridge) return line; // bridge columns: label only (context, not a selection target)
+  if (cp?.temporality) line += ` [${cp.temporality.replace(/-/g, ' ')}]`;
+  if (cp?.description) line += ` — ${trimDesc(cp.description)}`;
+  if (cp && isEnumerable(cp)) {
+    const shown = cp.sampleValues.slice(0, SAMPLE_CAP).join(', ');
+    const more = cp.sampleValues.length > SAMPLE_CAP ? ` (+${cp.sampleValues.length - SAMPLE_CAP} more)` : '';
+    line += ` — values: ${shown}${more}`;
+  }
+  return line;
+}
+
 /** Compact, deterministic rendering of the payload: the capability + property menu + read-only joins. */
 export function renderPayloadMenu(payload: SubgraphPayload): string {
   const { properties, capabilities } = payloadIris(payload);
+  const colByIri = payloadColumnByIri(payload);
+  const bridgeTables = new Set(payload.bridgeNodes.map(tableOfClassIri));
 
   const capLines = payload.capabilities
     .filter((c) => capabilities.has(c.iri))
@@ -85,7 +126,10 @@ export function renderPayloadMenu(payload: SubgraphPayload): string {
       return `- ${label}${unit} — IRI: ${c.iri}`;
     });
 
-  const propLines = [...properties].sort().map((iri) => `- ${propLabel(iri)} — IRI: ${iri}`);
+  const propLines = [...properties].sort().map((iri) => {
+    const table = iri.split('/').slice(-2)[0] ?? '';
+    return renderPropLine(iri, colByIri.get(iri), bridgeTables.has(table));
+  });
 
   const joinLines = payload.joins.map((j) => {
     const from = tableOfClassIri(j.from);

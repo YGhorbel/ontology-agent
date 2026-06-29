@@ -48,10 +48,17 @@ export interface ColumnInfo {
   isPrimaryKey?: boolean;
   isUnique?: boolean;
   sampleValues?: string[];
-  /** Cumulative running-total measure (SUM double-counts → use MAX / last-value-per-group). */
-  temporality?: 'cumulative-snapshot';
-  /** Partition (entity+season) + order columns that justify the cumulative tag — the precise grain. */
-  temporalityEvidence?: { partitionColumns: string[]; orderColumn: string; ratio: number };
+  /** Grain-type tag: `cumulative-snapshot` (monotonic running total) or `as-of-event-snapshot`
+   *  (non-monotonic carried-forward state, e.g. a rank — ADR-015). */
+  temporality?: 'cumulative-snapshot' | 'as-of-event-snapshot';
+  /** Partition (entity+season) + order columns that justify the tag — the precise grain. */
+  temporalityEvidence?: {
+    partitionColumns: string[];
+    orderColumn: string;
+    signal?: 'monotonic' | 'carry-forward';
+    ratio?: number;
+    vnRatio?: number;
+  };
 }
 export interface CapabilityInfo {
   kind: string;

@@ -101,3 +101,41 @@ not `linkQuestion`.
 a cumulative column (e.g. `driverstandings.points`) keep its `temporalityEvidence` through Stage 2's
 payload trim — i.e. it is **load-bearing for H2**. Stage 1's output is the `AnchorSet` only; the
 next brick wires the full pipeline graph and builds `anchoredColumns` from it.
+
+## Superlative grounding (Stage-1.x) — `superlative.ts`
+
+A superlative ("**oldest** driver") expresses a *ranking intent over a dimension* (date of birth).
+The ranking OPERATOR is general and already lives in the IR (`orderBy` + `limit`); what was missing
+is the **grounding** — binding that operator to the right typed column. Without it, the dimension
+column (`drivers.dob`) has no enum samples and no lexical anchor, so the S2 trimmer drops it and the
+planner falls back to the only sortable column left (an id). This is the wrong-column bug
+[ADR-010](../adr/010-planner-menu-semantics.md) describes from the menu side; **ADR-010 surfaces the
+semantics of columns that are present, but it has nothing to show if the column was already trimmed.**
+This step ensures the column **survives**.
+
+**The rule (self-scoping, single-candidate).** When the question carries a superlative token and a
+candidate class is in play, count that class's **orderable** columns of the superlative's **dimension
+type**. *Orderable* = the right SQL type (date/timestamp for a date superlative) **and not id-like**
+(`isPrimaryKey` or a name ending in `id` — `driverid` is sortable but is NOT a dimension; this
+exclusion is *why* the planner's id guess was wrong). If **exactly one** such column exists → ground
+it (emit a `SuperlativeDirective` with the implied direction); if **zero or more than one** → fall
+through and ground nothing. Never guess among candidates.
+
+**Lexicon — LANGUAGE, not domain.** A small static map from superlative token → (dimension type,
+direction): `oldest`/`earliest` → (date, ASC), `youngest`/`newest`/`latest` → (date, DESC). This is
+English, the only "added knowledge", and it is language not domain; the column TYPES come from the
+profiling the generator already did — so **H4 (zero curation) is preserved**. The predicate is
+**type-parameterized** (`isOrderable(col, type)`): adding numeric superlatives later is "add lexicon
+entries + confirm the guard holds for numerics", not a rewrite.
+
+**Promotion without regression.** Grounding does NOT change the prune rule, the trimmer mechanism, or
+the `AnchorSet`. It runs in the pipeline's `subgraphNode` (where the graph — and thus
+`ColumnProp.dataType`/`isPrimaryKey` — is in scope; `anchorQuestion` is deliberately graph-free) and
+**merges its one column into the `anchoredColumns` map** that `trimColumns` already honors. One more
+anchored column fed in; everything downstream is unchanged. A question with no superlative token
+grounds nothing, so the over-join and happy-path payloads are byte-identical.
+
+**Deferred on purpose** (the AmbiSQL multi-candidate cases): `"first race"` (year vs round vs date —
+a cross-type ambiguity), `"most points"` (four points columns + aggregate-then-rank, a separate
+IR-composition concern), and `"fastest lap"` (already resolved via the capability path's
+`preferredDirection`). See [ADR-011](../adr/011-superlative-grounding.md).

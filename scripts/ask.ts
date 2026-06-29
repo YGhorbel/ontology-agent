@@ -72,6 +72,7 @@ async function main(): Promise<void> {
     for (const j of res.payload.joins) {
       console.log(`            ${short(j.from)} → ${short(j.to)} on ${j.on.map((p) => p.join('=')).join(', ')} [${j.provenance}]`);
     }
+    printGrainResolve(res.traces.grainResolve);
     console.log('IR        :', JSON.stringify(res.ir));
     console.log('SQL       :\n' + res.sql);
     if (res.rows) {
@@ -86,7 +87,20 @@ async function main(): Promise<void> {
     if (res.anchorSet) console.log('terminals :', res.anchorSet.terminals.map(short).join(', '));
     printPrune(res.traces.prune);
     if (res.payload) console.log('joins     :', res.payload.joins.map((j) => `${short(j.from)}→${short(j.to)}`).join(', '));
+    printGrainResolve(res.traces.grainResolve);
     console.log('traces    :', Object.keys(res.traces).join(', '));
+  }
+}
+
+/** Dump the tier-1 grain resolver trace (ADR-016): deterministic rebinds + surfaced grain-ambiguities. */
+function printGrainResolve(g: import('../src/query/grain-resolve.js').GrainResolveTrace | undefined): void {
+  if (!g || (g.resolutions.length === 0 && g.ambiguities.length === 0)) return;
+  for (const r of g.resolutions) {
+    console.log(`grain bind:  ${r.column}: ${r.from} → ${r.to}  [${r.shape} ⇒ ${r.impliedGrain}]`);
+  }
+  for (const a of g.ambiguities) {
+    const cands = a.candidates.map((c) => `${c.table}(${c.grain})`).join(' vs ');
+    console.log(`grain AMBIG: ${a.column}: ${cands}  [${a.shape}] — ${a.note}`);
   }
 }
 

@@ -26,7 +26,13 @@ export interface ColumnProp {
    * columns may live on a CALENDAR table reached by a declared FK (e.g. races.year / races.round),
    * not on the measure table itself.
    */
-  temporalityEvidence?: { partitionColumns: string[]; orderColumn: string; ratio: number };
+  temporalityEvidence?: {
+    partitionColumns: string[];
+    orderColumn: string;
+    signal?: 'monotonic' | 'carry-forward';
+    ratio?: number;
+    vnRatio?: number;
+  };
   /**
    * Enum/profile sample values. For terminal classes the payload carries the FULL domain when the
    * enum is exhaustive (`distinctCount <= sampleValues.length` — the generator only emits samples
@@ -37,6 +43,15 @@ export interface ColumnProp {
   /** Total distinct values in the column (from profiling). Pairs with sampleValues to mark a column
    * enumerable (exhaustive enum) for filter value-grounding. See docs/adr/009-value-grounding.md. */
   distinctCount?: number;
+  /** skos:prefLabel — the column's human-readable name (e.g. "Date of birth"). Surfaced in the
+   * planner menu so the LLM binds superlatives/filters by MEANING, not just by IRI. ADR-010. */
+  prefLabel?: string;
+  /** skos:altLabel — synonyms/aliases (normalized to a string[]). Carried for completeness; not
+   * rendered in the menu (prefLabel + description already disambiguate). ADR-010. */
+  altLabel?: string[];
+  /** rdfs:comment — the generated column description (carries semantics, ranges, directional hints).
+   * Surfaced in the planner menu; this is the knowledge the generator wrote but the consumer hid. ADR-010. */
+  description?: string;
 }
 
 /** One join edge between two classes. A composite FK is ONE edge with >=2 columnPairs (RULE B). */

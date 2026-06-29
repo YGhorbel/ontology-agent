@@ -70,6 +70,14 @@ function columnPropOf(n: Record<string, unknown>): ColumnProp {
     prop.temporalityEvidence = n['qsl:temporalityEvidence'] as ColumnProp['temporalityEvidence'];
   if (n['qsl:sampleValues'] !== undefined) prop.sampleValues = n['qsl:sampleValues'] as string[];
   if (n['qsl:distinctCount'] !== undefined) prop.distinctCount = n['qsl:distinctCount'] as number;
+  // Semantic surfaces (ADR-010): carry the generated labels/comment so the planner menu can expose
+  // column MEANING. altLabel may arrive as a string or string[] in JSON-LD — normalize to string[].
+  if (n['skos:prefLabel'] !== undefined) prop.prefLabel = n['skos:prefLabel'] as string;
+  if (n['skos:altLabel'] !== undefined) {
+    const a = n['skos:altLabel'];
+    prop.altLabel = Array.isArray(a) ? (a as string[]) : [a as string];
+  }
+  if (n['rdfs:comment'] !== undefined) prop.description = n['rdfs:comment'] as string;
   return prop;
 }
 

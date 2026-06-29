@@ -604,7 +604,6 @@
           "year"
         ],
         "orderColumn": "round",
-        "signal": "monotonic",
         "ratio": 0.99990730441231
       }
     },
@@ -647,17 +646,7 @@
         "7",
         "8",
         "9"
-      ],
-      "qsl:temporality": "as-of-event-snapshot",
-      "qsl:temporalityEvidence": {
-        "partitionColumns": [
-          "constructorid",
-          "year"
-        ],
-        "orderColumn": "round",
-        "signal": "carry-forward",
-        "vnRatio": 0.04877254321217417
-      }
+      ]
     },
     {
       "@id": "qsl:property/constructorstandings/positiontext",
@@ -749,7 +738,6 @@
           "year"
         ],
         "orderColumn": "round",
-        "signal": "monotonic",
         "ratio": 1
       }
     },
@@ -1103,7 +1091,6 @@
           "year"
         ],
         "orderColumn": "round",
-        "signal": "monotonic",
         "ratio": 1
       }
     },
@@ -1119,17 +1106,7 @@
       "qsl:mapsToTable": "driverstandings",
       "qsl:mapsToColumn": "position",
       "qsl:dataType": "bigint",
-      "qsl:distinctCount": 108,
-      "qsl:temporality": "as-of-event-snapshot",
-      "qsl:temporalityEvidence": {
-        "partitionColumns": [
-          "driverid",
-          "year"
-        ],
-        "orderColumn": "round",
-        "signal": "carry-forward",
-        "vnRatio": 0.04597592123084863
-      }
+      "qsl:distinctCount": 108
     },
     {
       "@id": "qsl:property/driverstandings/positiontext",
@@ -1185,7 +1162,6 @@
           "year"
         ],
         "orderColumn": "round",
-        "signal": "monotonic",
         "ratio": 1
       }
     },
@@ -1680,7 +1656,6 @@
           "year"
         ],
         "orderColumn": "round",
-        "signal": "monotonic",
         "ratio": 0.9966861290831623
       }
     },

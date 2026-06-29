@@ -1,17 +1,24 @@
 # Query pipeline (Stage 4) — the five-stage flow
 
-`src/query/pipeline.ts` wires the five query stages into one LangGraph flow:
+`src/query/pipeline.ts` wires the query stages into one LangGraph flow (the `resolve` node — the tier-1
+grain resolver, ADR-016 — sits between the planner and the compiler):
 
 ```
-question ──▶ anchor ──▶ subgraph ──▶ planner ──▶ compile ──▶ execute ──▶ {sql, rows}
-                 │            │            │           │           │
-   (S1)        AnchorSet   Payload        IR          SQL        rows
-                            │            │           │           │
-                       disconnected? repair-     CompileError  query
-                            │       exhausted?     │           error?
-                            ▼            ▼           ▼           ▼
+question ──▶ anchor ──▶ subgraph ──▶ planner ──▶ resolve ──▶ compile ──▶ execute ──▶ {sql, rows}
+                 │            │            │          │          │           │
+   (S1)        AnchorSet   Payload        IR      IR (grain-    SQL        rows
+                            │            │        resolved)     │           │
+                       disconnected? repair-                CompileError  query
+                            │       exhausted?                  │           error?
+                            ▼            ▼                       ▼           ▼
                          PipelineFailure (graceful terminal state, carries partial traces)
 ```
+
+`resolve` is pure (no LLM, no DB, no throw): it rebinds a grain-competitor column to the
+operation-implied sibling where the operation determines grain, and SURFACES (flags `grainResolve.ambiguities`,
+never rewrites) the irreducible ASOF collision. Its signature is `resolveGrain(ir, payload, graph)` — the
+question string is NOT in scope, so the rule is lexicon-free by construction. See
+[docs/query/grain-resolve.md](grain-resolve.md) and [ADR-016](../adr/016-operation-grain-resolver.md).
 
 This is **integration only** — each node calls a stage's existing public entry point; no stage
 internals change here. The exit gate is "a raw question flows through all five stages to SQL+rows,
@@ -78,7 +85,7 @@ The graph never throws; it surfaces which stage failed plus the trace so far.
 
 ## `traces` — the provenance spine
 
-`traces` carries `{ anchor, subgraph, planner, compiler }` slices — the spine the Stage-5
+`traces` carries `{ anchor, subgraph, planner, grainResolve, compiler }` slices — the spine the Stage-5
 certificate will later consume. It is assembled here even though the certificate isn't built yet.
 
 ## Known seam limitation — H2 rewrite vs. recall-favoring S1 (the honest split)

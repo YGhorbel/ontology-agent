@@ -41,16 +41,29 @@ export const ColumnFactSchema = z.object({
   /** A sentinel value (e.g. '-', 'N/A', '') detected in samples that means unknown/missing. */
   nullPlaceholder: z.string().optional(),
 
-  // --- Temporality (Fix 3; set by the monotonicity probe in node 1b) ---
-  /** Cumulative running-total measure → SUM double-counts; use MAX / last-value-per-group. */
-  temporality: z.enum(['cumulative-snapshot']).optional(),
-  /** Structured evidence: the partition (entity + season) columns, the sequence order column,
-   *  and the observed monotonic-non-decreasing ratio that earned the tag (Part 2b). */
+  // --- Temporality (Fix 3 + ADR-015; set by the temporality probes in node 1b) ---
+  /**
+   * Grain-type of a measure/state column, both species of as-of-event snapshot:
+   * - `cumulative-snapshot` — a monotonic running total (SUM double-counts; use MAX/last-per-group).
+   *   The compiler de-cumulates these (H2); only this value triggers that rewrite.
+   * - `as-of-event-snapshot` — a non-monotonic state carried-forward as-of the event (e.g. a
+   *   championship `position`/rank). Surfaced in the planner menu (ADR-013) as a grain distinguisher;
+   *   NOT de-cumulated (it is a state, not a running sum) and never SUM-failed.
+   */
+  temporality: z.enum(['cumulative-snapshot', 'as-of-event-snapshot']).optional(),
+  /** Structured evidence: the partition (entity + season) columns, the sequence order column, and a
+   *  signal-specific metric. `ratio` (monotonic-non-decreasing fraction) is present for the monotonic
+   *  signal; `vnRatio` (von Neumann ratio var(Δ)/var(v)) for the carry-forward signal (ADR-015). */
   temporalityEvidence: z
     .object({
       partitionColumns: z.array(z.string()),
       orderColumn: z.string(),
-      ratio: z.number(),
+      /** How the tag was earned: the monotonic probe (cumulative) or the carry-forward probe (snapshot). */
+      signal: z.enum(['monotonic', 'carry-forward']).optional(),
+      /** Monotonic-non-decreasing fraction (monotonic signal only). */
+      ratio: z.number().optional(),
+      /** von Neumann ratio var(Δ)/var(v) (carry-forward signal only); lower ⇒ smoother snapshot. */
+      vnRatio: z.number().optional(),
     })
     .optional(),
 });
