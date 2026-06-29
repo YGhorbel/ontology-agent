@@ -33,9 +33,12 @@ see ADR-003). Every pass appends to `trace` for the eventual certificate.
    - **aggregation** (`measures` present) → `capability` expands to its `formulaHint` verbatim;
      `aggExpr` → `fn(<table>.<col>)` resolved from the property IRI; `groupBy` columns are added to
      SELECT and to `GROUP BY`.
-3. **Join materialization.** `FROM <root>` then one `JOIN <table> ON <pairs>` per `payload.joins`
-   edge, using the literal `on` column pairs; a composite edge (≥2 pairs) emits a multi-column `AND`
-   condition. Exactly the payload's joins — no more, no fewer (fold-consumed edges excepted, pass 4).
+3. **Join materialization (back-pruned).** `FROM <root>` then one `JOIN <table> ON <pairs>` per
+   *kept* `payload.joins` edge, using the literal `on` column pairs; a composite edge (≥2 pairs) emits
+   a multi-column `AND` condition. The FROM is first **back-pruned to the minimal connected subtree
+   spanning the tables the IR actually references** (ADR-012, section below) — so it is exactly the
+   payload's joins over that subtree, no more, no fewer (fold-consumed edges excepted, pass 4). A
+   payload whose every table is referenced prunes nothing → byte-identical FROM.
 4. **Temporality rewrite (H2).** A plain `SUM`/`AVG` over a **cumulative-snapshot** column
    double-counts a running total. When an `aggExpr` measure's column carries
    `temporality = 'cumulative-snapshot'`, the compiler de-cumulates: it snapshots the final row per
@@ -105,6 +108,42 @@ By contrast `results.points` carries no temporality → `SUM(results.points)`, n
 > confidence-mode routing takes the zero-cost declared detour and never makes `races` adjacent.
 > Uniform mode picks the 1-hop discovered edge, which is how the fold is exercised. Same mechanism,
 > different H1 routing knob.
+
+## Back-prune: the FROM follows the IR's references, not retrieval's speculation (ADR-012)
+
+Stage 2 hands the compiler the cheapest Steiner tree connecting the anchored terminals — which
+routinely carries tables the planner's IR never reads (a speculatively-kept terminal, or a Steiner
+bridge that only exists to connect others). Rendering such a table as an INNER JOIN silently
+constrains the row population (e.g. "which country is the oldest driver from" over `{drivers,
+laptimes}` would span only drivers who set a lap time). That violates the invariant **"the compiler
+writes what the plan committed to."** So before materializing joins the compiler restricts the FROM
+to the **minimal connected subtree of the post-fold payload tree that spans exactly the
+IR-referenced tables**:
+
+- **Referenced-table set** (`referencedTables`): the table named by each IR slot — `select`,
+  `groupBy`, `filters`, `orderBy.byProperty` (not `byAlias`, which names a measure alias); each
+  `aggExpr` column's table; and for a capability measure the table(s) of
+  `referencedColumns(formulaHint)`, falling back to the capability's scope-class table for a
+  column-free `COUNT(*)` formula. **Join keys are not references** — they appear only in generated
+  `ON` clauses. A filter that names a join-key *column* (e.g. `driverstandings.raceid`) still counts
+  its table as referenced (the IR named it): that is the **brick/grain boundary** — such over-joins
+  are a residual wrong-grain defect, not a back-prune win. A reference to a calendar table folded
+  away by the temporality pass maps to its **measure table** (`requiredTableFor`, mirroring
+  `refExpr`), so the prune operates purely on the post-fold outer tree and never fights
+  de-cumulation. `referencedTables` therefore runs *after* the fold pass and *before* `buildFrom`.
+- **Minimal connected subtree** (`minimalSubtree`) by **leaf-pruning**: the post-fold outer joins
+  form a tree; repeatedly drop any degree-1 node not in the referenced set (and its incident edge)
+  until none remain. On a tree this yields the unique minimal connected subtree spanning the
+  referenced nodes.
+
+**Connectivity correctness (the must-not-break invariant).** Leaf-pruning only ever removes a
+degree-1 node *not* in the referenced set. A non-referenced node on the (unique, tree) path between
+two referenced nodes has degree ≥2, so it is never a leaf and is never dropped — it is an
+**articulation point** and is structurally retained. The kept subgraph is therefore always connected
+and always spans the referenced tables. (Same shape as `pruneLeaves` in
+[subgraph.ts](../../src/query/subgraph.ts), applied to the payload join tree.) A `back-prune` trace
+entry is emitted only when ≥1 table is dropped — its absence is the observable signature of the
+no-op (byte-stable FROM).
 
 ## Errors
 

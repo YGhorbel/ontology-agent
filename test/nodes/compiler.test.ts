@@ -25,6 +25,10 @@ import {
   irRankingNumeric,
   irRankingNumericText,
   irMixedInvalid,
+  irBackpruneSingle,
+  irBackpruneRefFact,
+  irBackpruneMultiRef,
+  irBackpruneJoinKeyOnly,
   CAP_AVG_LAP_MS,
 } from '../fixtures/ir/index.js';
 import { tableOfClassIri } from '../../src/query/graph-build.js';
@@ -240,5 +244,90 @@ describe('Stage 3b — compiler: generalized shapes (projection / ranking)', () 
 
     const badSelect: MetricQueryIR = { select: [{ property: prop('pitstops', 'duration') }] };
     expect(schema.safeParse(badSelect).success).toBe(false);
+  });
+});
+
+describe('Stage 3b — compiler: back-prune the FROM to IR-referenced tables (ADR-012)', () => {
+  it('B1. drops an unreferenced over-joined table → FROM collapses to the single referenced table (915)', () => {
+    const payload = payloadFor(['drivers', 'laptimes'], { anchored: { drivers: ['nationality', 'dob'] } });
+    // Sanity: the payload genuinely over-joins laptimes vs the single-table IR.
+    expect(payload.classes.map((c) => tableOfClassIri(c.iri)).sort()).toEqual(['drivers', 'laptimes']);
+
+    const { sql } = compile(irBackpruneSingle, payload);
+    expect(sql).toContain('FROM drivers');
+    expect(joinCount(sql)).toBe(0);
+    expect(sql).not.toContain('laptimes');
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('B2. KEEPS a non-referenced bridge that is an articulation point between two referenced tables', () => {
+    // drivers↔races have no direct FK → the extractor bridges them through the laptimes fact table.
+    const payload = payloadFor(['drivers', 'races'], { anchored: { drivers: ['surname'], races: ['name'] } });
+    expect(payload.bridgeNodes.length).toBeGreaterThanOrEqual(1);
+    const bridges = payload.bridgeNodes.map(tableOfClassIri);
+
+    const ir: MetricQueryIR = {
+      select: [{ property: prop('drivers', 'surname') }],
+      filters: [{ property: prop('races', 'name'), op: '=', value: 'X' }],
+    };
+    const { sql, trace } = compile(ir, payload);
+
+    // Nothing pruned: both terminals referenced, the bridge lies on the connecting path.
+    expect(joinCount(sql)).toBe(payload.joins.length);
+    for (const b of bridges) expect(sql).toContain(b);
+    expect(sql).toContain('drivers');
+    expect(sql).toContain('races');
+    expect(trace.some((t) => t.pass === 'back-prune')).toBe(false);
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('B3. KEEPS a referenced fact table (back-prune drops only UNREFERENCED tables)', () => {
+    const payload = payloadFor(['drivers', 'qualifying'], {
+      anchored: { drivers: ['surname'], qualifying: ['position'] },
+    });
+    const { sql } = compile(irBackpruneRefFact, payload);
+
+    expect(sql).toContain('qualifying');
+    expect(sql).toContain('drivers.surname');
+    expect(joinCount(sql)).toBe(payload.joins.length); // the one drivers↔qualifying join stays
+    expect(sql).toContain('qualifying.position >= 16');
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('B4. emits exactly the minimal subtree spanning 3 referenced tables (drops off-path leaf, stays connected)', () => {
+    const payload = payloadFor(['drivers', 'races', 'constructors', 'circuits'], {
+      anchored: { races: ['year'], drivers: ['surname'], constructors: ['name'] },
+    });
+    // Full payload is the path circuits—races—laptimes—drivers—qualifying—constructors (6 tables).
+    expect(payload.classes.length).toBe(6);
+
+    const { sql } = compile(irBackpruneMultiRef, payload);
+    // circuits is an off-path leaf (only races references its FK) → pruned.
+    expect(sql).not.toContain('circuits');
+    // The spanning subtree keeps the two Steiner bridges (laptimes, qualifying) on the path.
+    for (const t of ['races', 'laptimes', 'drivers', 'qualifying', 'constructors']) expect(sql).toContain(t);
+    expect(joinCount(sql)).toBe(4); // 5 nodes → 4 edges, connected
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('B5. no-op when every payload table is referenced — FROM identical to pre-brick (non-regression)', () => {
+    const payload = payloadFor(['laptimes', 'constructors'], { anchored: { constructors: ['nationality'] } });
+    const { sql, trace } = compile(ir1, payload);
+    // ir1 references laptimes (capability formula) + constructors; drivers/qualifying bridges are articulation points.
+    expect(joinCount(sql)).toBe(payload.joins.length);
+    for (const c of payload.classes) expect(sql).toContain(tableOfClassIri(c.iri));
+    expect(trace.some((t) => t.pass === 'back-prune')).toBe(false); // nothing dropped → byte-stable FROM
+    expect(parses(sql)).toBe(true);
+  });
+
+  it('B6. drops a join-key-only table (present in scope, used only in an ON clause)', () => {
+    const payload = payloadFor(['constructors', 'results'], { anchored: { constructors: ['name'] } });
+    expect(payload.classes.map((c) => tableOfClassIri(c.iri)).sort()).toEqual(['constructors', 'results']);
+
+    const { sql } = compile(irBackpruneJoinKeyOnly, payload);
+    expect(sql).toContain('FROM constructors');
+    expect(joinCount(sql)).toBe(0);
+    expect(sql).not.toContain('results');
+    expect(parses(sql)).toBe(true);
   });
 });

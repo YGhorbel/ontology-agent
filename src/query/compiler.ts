@@ -242,16 +242,121 @@ function refExpr(iri: string, scope: Scope, folds: Map<string, FoldPlan>): { sql
   return { sql: `${table}.${column}`, prop };
 }
 
+// ── Back-prune (ADR-012): the FROM follows the IR's actual references, not retrieval's speculation. ──
+
+/**
+ * Map a table to the OUTER-tree node it lives under. The temporality pass folds a calendar table into
+ * its measure table's subquery (`refExpr` remaps the calendar's grain columns to the measure alias),
+ * so a reference to a folded calendar table requires the MEASURE table — not the calendar table, which
+ * no longer exists as an outer node. Identity for every other table. This keeps the back-prune in the
+ * post-fold outer-tree node space, so it never fights de-cumulation.
+ */
+function requiredTableFor(table: string, folds: Map<string, FoldPlan>): string {
+  for (const fold of folds.values()) {
+    if (fold.calendarTable === table) return fold.measureTable;
+  }
+  return table;
+}
+
+/**
+ * The set of payload tables the IR actually references (in the post-fold outer-tree node space).
+ * Join keys are NOT counted — they appear only in generated ON clauses, never as IR slots. A filter
+ * that names a join-key COLUMN (e.g. `laptimes.raceid`) still counts that table as referenced (the IR
+ * names it), which is exactly why such over-joins are a residual bucket-2 (grain) defect, not a
+ * back-prune win (ADR-012).
+ */
+function referencedTables(ir: MetricQueryIR, scope: Scope, folds: Map<string, FoldPlan>): Set<string> {
+  const out = new Set<string>();
+  const add = (iri: string): void => {
+    out.add(requiredTableFor(parsePropertyIri(iri).table, folds));
+  };
+  for (const s of ir.select ?? []) add(s.property);
+  for (const g of ir.groupBy ?? []) add(g.property);
+  for (const f of ir.filters ?? []) add(f.property);
+  for (const o of ir.orderBy ?? []) if (o.byProperty) add(o.byProperty); // byAlias names a measure alias, no table
+  for (const m of ir.measures ?? []) {
+    if (m.aggExpr !== undefined) {
+      add(m.aggExpr.property);
+    } else if (m.capability !== undefined) {
+      const cap = scope.capByIri.get(m.capability);
+      const refs = cap?.formulaHint ? referencedColumns(cap.formulaHint) : [];
+      if (refs.length > 0) {
+        for (const r of refs) out.add(requiredTableFor(r.table, folds));
+      } else if (cap) {
+        // COUNT(*)-style formula with no qualified column: fall back to the capability's scope table
+        // (mirrors fromTables(refs, scopeTable) in the formula validator).
+        out.add(requiredTableFor(tableOfClassIri(cap.scopeClass), folds));
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Minimal connected subtree of the post-fold outer tree spanning `required`, by leaf-pruning:
+ * repeatedly drop any degree-<=1 node NOT in `required` (and its incident edges) until none remain.
+ * On a tree this yields the UNIQUE minimal connected subtree spanning `required`. A non-required node
+ * on the (unique, tree) path between two required nodes has degree >=2, so it is never a leaf and is
+ * never dropped — connectivity and full spanning are preserved by construction (the articulation-point
+ * invariant; same shape as pruneLeaves in subgraph.ts, on the payload join tree).
+ */
+function minimalSubtree(
+  required: Set<string>,
+  outerTables: string[],
+  activeJoins: PayloadJoin[],
+  scope: Scope,
+): { tables: Set<string>; joins: PayloadJoin[] } {
+  // Defensive: an IR that names no table can't constrain the prune — keep the whole outer tree.
+  if (required.size === 0) return { tables: new Set(outerTables), joins: [...activeJoins] };
+
+  const nodes = new Set(outerTables);
+  let edges = [...activeJoins];
+  for (;;) {
+    const degree = new Map<string, number>();
+    for (const j of edges) {
+      const { from, to } = scope.joinTables(j);
+      degree.set(from, (degree.get(from) ?? 0) + 1);
+      degree.set(to, (degree.get(to) ?? 0) + 1);
+    }
+    const leaves = new Set<string>();
+    for (const n of nodes) {
+      if (required.has(n)) continue;
+      if ((degree.get(n) ?? 0) <= 1) leaves.add(n);
+    }
+    if (leaves.size === 0) break;
+    for (const n of leaves) nodes.delete(n);
+    edges = edges.filter((j) => {
+      const { from, to } = scope.joinTables(j);
+      return !leaves.has(from) && !leaves.has(to);
+    });
+  }
+  return { tables: nodes, joins: edges };
+}
+
 // ── Pass 3 helper: materialize FROM + JOINs verbatim from payload.joins, minus consumed fold edges ──
-function buildFrom(scope: Scope, folds: Map<string, FoldPlan>, trace: CompileTraceEntry[]): string {
+function buildFrom(
+  scope: Scope,
+  folds: Map<string, FoldPlan>,
+  required: Set<string>,
+  trace: CompileTraceEntry[],
+): string {
   const foldedAway = new Set<string>();
   const consumed = new Set<PayloadJoin>();
   for (const f of folds.values()) {
     if (f.calendarTable) foldedAway.add(f.calendarTable);
     if (f.edge) consumed.add(f.edge);
   }
-  const outerTables = [...scope.tables].filter((t) => !foldedAway.has(t)).sort();
-  const activeJoins = scope.joins.filter((j) => !consumed.has(j));
+  const allOuterTables = [...scope.tables].filter((t) => !foldedAway.has(t)).sort();
+  const allActiveJoins = scope.joins.filter((j) => !consumed.has(j));
+
+  // Back-prune the FROM to the minimal connected subtree spanning the IR-referenced tables (ADR-012).
+  const { tables: keptTables, joins: keptJoins } = minimalSubtree(required, allOuterTables, allActiveJoins, scope);
+  const dropped = allOuterTables.length - keptTables.size;
+  if (dropped > 0) {
+    trace.push({ pass: 'back-prune', detail: `pruned ${dropped} table(s) not referenced by the IR` });
+  }
+  const outerTables = allOuterTables.filter((t) => keptTables.has(t));
+  const activeJoins = keptJoins;
 
   if (activeJoins.length === 0) {
     const root = outerTables[0];
@@ -373,8 +478,9 @@ export function compile(ir: MetricQueryIR, payload: SubgraphPayload): CompileRes
     void i;
   });
 
-  // ── Pass 3: join materialization ──
-  const fromSql = buildFrom(scope, folds, trace);
+  // ── Pass 3: join materialization (back-pruned to IR-referenced tables, ADR-012) ──
+  const required = referencedTables(ir, scope, folds);
+  const fromSql = buildFrom(scope, folds, required, trace);
 
   // ── Pass 5 + 6: filters (with numeric-text cast) ──
   const conds: string[] = [];
